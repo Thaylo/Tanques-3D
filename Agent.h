@@ -35,7 +35,7 @@ public:
 	void draw();
 	void controlAction();
 
-	void atirar();
+	virtual void atirar();
 	bool checkDisparo();
 
 	void destroyNow();

@@ -63,4 +63,12 @@ Enemy::~Enemy() {
 	// TODO Auto-generated destructor stub
 }
 
+virtual void Enemy::atirar()
+{
+	if (recarga > ROUNDS_RECARGA * ROUNDS_RECARGA_HANDICAP_FOR_IA)
+	{
+		Agent::atirar();
+	}
+}
+
 } /* namespace std */
