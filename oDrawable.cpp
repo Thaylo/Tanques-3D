@@ -11,6 +11,4 @@ using namespace std;
 
 oDrawable::oDrawable()
 {
-	// TODO Auto-generated constructor stub
-
 }

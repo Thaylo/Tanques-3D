@@ -45,7 +45,6 @@ void GameData::iterateGameData()
 	g.iterate();
 	c.iterate();
 
-
 	for(int i = 0; i < quant; i++)
 	{
 		aux = dynamic_cast<Agent*> (agents[i]);

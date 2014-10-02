@@ -8,11 +8,8 @@
 #include "Terrain.h"
 
 Terrain::Terrain() {
-	// TODO Auto-generated constructor stub
-
 }
 
 Terrain::~Terrain() {
-	// TODO Auto-generated destructor stub
 }
 

@@ -25,7 +25,7 @@ void Ground::iterate()
 
 void Ground::draw()
 {
-    // begin drawing a cube
+	// begin drawing a cube
 	double aresta = 60;
 
 	glBindTexture(GL_TEXTURE_2D, t[0]);   // Escolhe a textura a ser usada.
@@ -68,5 +68,4 @@ void Ground::draw()
 }
 
 Ground::~Ground() {
-	// TODO Auto-generated destructor stub
 }
