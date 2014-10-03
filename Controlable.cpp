@@ -20,6 +20,5 @@ void Controlable::setController(Control *control_)
 
 
 Controlable::~Controlable() {
-	// TODO Auto-generated destructor stub
 }
 

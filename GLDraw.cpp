@@ -62,7 +62,7 @@ int ImageLoad(char *filename, Image *image) {
 
     // Lendo a altura
     image->sizeY = getint (file);
-    printf("Algura de %s: %lu\n", filename, image->sizeY);
+    printf("Altura de %s: %lu\n", filename, image->sizeY);
 
     // Calculo do tamanho (size) (assumindo 24 bits ou 3 bytes por pixel).
     size = image->sizeX * image->sizeY * 3;

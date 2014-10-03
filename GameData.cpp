@@ -45,44 +45,39 @@ void GameData::iterateGameData()
 	g.iterate();
 	c.iterate();
 
-
 	for(int i = 0; i < quant; i++)
 	{
-		aux = dynamic_cast<Agent*> (agents[i]);
-		if(aux != NULL)
+		aux = agents[i];
+		aux->iterate();
+		if(aux->checkDisparo())
 		{
-			aux->iterate();
-			if(aux->checkDisparo())
-			{
-				Projetil *disparo = new Projetil(aux);
+			Projetil *disparo = new Projetil(aux);
 
-
-
-				disparo->setId(aux->getId());
-				agents[quant++] = disparo;
-			}
-			if(aux->isToDestroy())
-			{
-				if(aux->getId() == PLAYER_ID)
-				{
-					jogador = NULL;
-				}
-				delete aux;
-				quant--;
-				for(int j = i; j < quant; j++)
-				{
-					agents[j] = agents[j+1];
-				}
-			}
+			disparo->setId(aux->getId());
+			agents[quant++] = disparo;
 		}
-
-		else
+		if(aux->isToDestroy())
 		{
-			cout << "Falha no dynamic cast\n\n\n";
-			exit(0);
+			if(aux->getId() == PLAYER_ID)
+			{
+				Projetil *isTiro = dynamic_cast<Projetil *>(aux);
+				if (!isTiro)
+				{
+					std::cout << "Game Over: LOSER!" << std::endl;
+					getControl()->keyEsc = TRUE;
+				}
+			}
+			delete aux;
+			agents[i] = agents[quant - 1];
+			--quant;
+			--i;
 		}
 	}
-
+	if (1 == quant && jogador == agents[0])
+	{
+		std::cout << "Game Over: WINNER!" << std::endl;
+		getControl()->keyEsc = TRUE;
+	}
 }
 
 

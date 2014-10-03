@@ -292,5 +292,4 @@ bool Agent::checkDisparo()
 }
 
 Agent::~Agent() {
-	// TODO Auto-generated destructor stub
 }

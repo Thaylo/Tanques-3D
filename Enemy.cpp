@@ -10,13 +10,11 @@
 namespace std {
 
 Enemy::Enemy() {
-	// TODO Auto-generated constructor stub
 	control = NULL;
 	target = NULL;
 }
 
 Enemy::Enemy(Agent *alvo) {
-	// TODO Auto-generated constructor stub
 	control = NULL;
 	target = alvo;
 }
@@ -60,7 +58,14 @@ void Enemy::controlAction()
 }
 
 Enemy::~Enemy() {
-	// TODO Auto-generated destructor stub
+}
+
+virtual void Enemy::atirar()
+{
+	if (recarga > ROUNDS_RECARGA * ROUNDS_RECARGA_HANDICAP_FOR_IA)
+	{
+		Agent::atirar();
+	}
 }
 
 } /* namespace std */

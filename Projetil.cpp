@@ -102,5 +102,4 @@ void Projetil::iterate()
 
 
 Projetil::~Projetil() {
-	// TODO Auto-generated destructor stub
 }

@@ -20,6 +20,7 @@ public:
 	Enemy(Agent *alvo);
 	void controlAction();
 	virtual ~Enemy();
+	virtual void atirar();
 };
 
 } /* namespace std */
