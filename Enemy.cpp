@@ -60,7 +60,7 @@ void Enemy::controlAction()
 Enemy::~Enemy() {
 }
 
-virtual void Enemy::atirar()
+void Enemy::atirar()
 {
 	if (recarga > ROUNDS_RECARGA * ROUNDS_RECARGA_HANDICAP_FOR_IA)
 	{
