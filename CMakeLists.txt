@@ -69,7 +69,13 @@ endif()
 
 # Include directories
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/entities
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/game
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/input
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/world
     ${OPENGL_INCLUDE_DIRS}
     ${GLUT_INCLUDE_DIRS}
 )
@@ -78,73 +84,73 @@ if(UNIX AND NOT APPLE)
     include_directories(${X11_INCLUDE_DIRS})
 endif()
 
-# Source files - organized by category
+# Source files - organized by layer and directory structure
+set(CORE_SOURCES
+    src/core/Vector.cpp
+    src/core/Timer.cpp
+)
+
+set(GRAPHICS_SOURCES
+    src/graphics/GLDraw.cpp
+    src/graphics/Window.cpp
+    src/graphics/oDrawable.cpp
+)
+
+set(ENTITIES_SOURCES
+    src/entities/Matter.cpp
+    src/entities/Movable.cpp
+    src/entities/Controlable.cpp
+    src/entities/Agent.cpp
+    src/entities/Enemy.cpp
+    src/entities/Projectile.cpp
+)
+
 set(GAME_SOURCES
-    Main.cpp
-    GameData.cpp
-    Window.cpp
+    src/game/Main.cpp
+    src/game/GameData.cpp
+    src/game/Camera.cpp
+    src/game/Ground.cpp
+    src/game/Control.cpp
 )
 
-set(GAME_LOGIC_SOURCES
-    Agent.cpp
-    Enemy.cpp
-    Projectile.cpp
-    Control.cpp
-    Controlable.cpp
-)
-
-set(RENDERING_SOURCES
-    GLDraw.cpp
-    Camera.cpp
-    oDrawable.cpp
-)
-
-set(PHYSICS_SOURCES
-    Matter.cpp
-    Movable.cpp
-    Vector.cpp
+set(INPUT_SOURCES
+    src/input/joystick.cpp
 )
 
 set(WORLD_SOURCES
-    Terrain.cpp
-    Ground.cpp
-)
-
-set(UTILITY_SOURCES
-    joystick.cpp
-    Timer.cpp
+    src/world/Terrain.cpp
 )
 
 # Combine all sources
 set(ALL_SOURCES
+    ${CORE_SOURCES}
+    ${GRAPHICS_SOURCES}
+    ${ENTITIES_SOURCES}
     ${GAME_SOURCES}
-    ${GAME_LOGIC_SOURCES}
-    ${RENDERING_SOURCES}
-    ${PHYSICS_SOURCES}
+    ${INPUT_SOURCES}
     ${WORLD_SOURCES}
-    ${UTILITY_SOURCES}
 )
 
 # Header files (for IDEs and documentation)
 set(HEADERS
-    Agent.h
-    Camera.h
-    Constants.h
-    Control.h
-    Controlable.h
-    Enemy.h
-    GameData.h
-    GLDraw.h
-    Ground.h
-    joystick.h
-    Matter.h
-    Movable.h
-    oDrawable.h
-    Projectile.h
-    Terrain.h
-    Timer.h
-    Vector.h
-    Window.h
+    include/core/Vector.h
+    include/core/Timer.h
+    include/core/Constants.h
+    include/graphics/GLDraw.h
+    include/graphics/Window.h
+    include/graphics/oDrawable.h
+    include/entities/Matter.h
+    include/entities/Movable.h
+    include/entities/Controlable.h
+    include/entities/Agent.h
+    include/entities/Enemy.h
+    include/entities/Projectile.h
+    include/game/GameData.h
+    include/game/Camera.h
+    include/game/Ground.h
+    include/game/Control.h
+    include/input/joystick.h
+    include/world/Terrain.h
 )
 
 # Create executable target
@@ -171,21 +177,22 @@ target_link_libraries(jogoThaylo PRIVATE
 
 # Asset files (textures)
 set(ASSET_FILES
-    frente.bmp
-    lateralDir.bmp
-    lateralEsq.bmp
-    sky.bmp
-    texture.bmp
-    topo.bmp
-    verso.bmp
+    assets/textures/frente.bmp
+    assets/textures/lateralDir.bmp
+    assets/textures/lateralEsq.bmp
+    assets/textures/sky.bmp
+    assets/textures/texture.bmp
+    assets/textures/topo.bmp
+    assets/textures/verso.bmp
 )
 
 # Copy asset files to build directory
 # This ensures textures are available when running the executable
 foreach(ASSET ${ASSET_FILES})
+    get_filename_component(ASSET_NAME ${ASSET} NAME)
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/${ASSET}
-        ${CMAKE_BINARY_DIR}/bin/${ASSET}
+        ${CMAKE_BINARY_DIR}/bin/${ASSET_NAME}
         COPYONLY
     )
 endforeach()
@@ -195,9 +202,10 @@ install(TARGETS jogoThaylo
     RUNTIME DESTINATION bin
 )
 
-install(FILES ${ASSET_FILES}
-    DESTINATION bin
-)
+# Install textures (extract just filenames for installation)
+foreach(ASSET ${ASSET_FILES})
+    install(FILES ${ASSET} DESTINATION bin)
+endforeach()
 
 # Print configuration summary
 message(STATUS "")
