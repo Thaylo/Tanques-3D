@@ -25,6 +25,14 @@ Quaternion Quaternion::identity() {
 }
 
 Quaternion Quaternion::fromAxisAngle(const Vector &axis, double angle) {
+    // Check for zero-length axis
+    double axisLength = axis.getLengthVector();
+    if (axisLength < 1e-10) {
+        cerr << "WARNING: fromAxisAngle() called with zero-length axis" << endl;
+        cerr << "         Returning identity quaternion (no rotation)." << endl;
+        return Quaternion::identity();
+    }
+
     // Normalize the axis
     Vector normAxis = axis;
     normAxis.setVectorLength(1.0);

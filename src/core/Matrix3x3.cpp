@@ -162,8 +162,8 @@ Matrix3x3 Matrix3x3::inverse() const {
     adj.m[2][1] = -(m[0][0] * m[2][1] - m[0][1] * m[2][0]);
     adj.m[2][2] = (m[0][0] * m[1][1] - m[0][1] * m[1][0]);
 
-    // Transpose and divide by determinant
-    return adj.transpose() * (1.0 / det);
+    // Divide by determinant (adj is already the transpose of cofactor matrix)
+    return adj * (1.0 / det);
 }
 
 void Matrix3x3::print() const {

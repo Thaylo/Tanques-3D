@@ -84,16 +84,33 @@ TEST_F(VectorTest, Length) {
     EXPECT_NEAR(length, 5.0, TEST_EPSILON);
 }
 
-// Example: Normalization test
+// Example: Normalization test (preserves direction, sets length to 1)
 TEST_F(VectorTest, Normalization) {
     Vector v(3.0, 4.0, 0.0);
-    Vector normalized = v.getNormalVector();
+    Vector normalized = v;
+    normalized.setVectorLength(1.0);
 
     // Check length is 1
     EXPECT_NEAR(normalized.getLengthVector(), 1.0, TEST_EPSILON);
 
-    // Check direction is preserved
+    // Check direction is preserved: (3,4,0) normalized is (0.6, 0.8, 0.0)
     EXPECT_VECTOR_NEAR(normalized, Vector(0.6, 0.8, 0.0), TEST_EPSILON);
+}
+
+// Example: Get perpendicular (normal) vector test
+TEST_F(VectorTest, PerpendicularNormalVector) {
+    Vector v(3.0, 4.0, 0.0);
+    Vector perpendicular = v.getNormalVector();
+
+    // Check length is 1
+    EXPECT_NEAR(perpendicular.getLengthVector(), 1.0, TEST_EPSILON);
+
+    // Check it's perpendicular to original: dot product should be 0
+    double dotProduct = perpendicular.dotProduct(v);
+    EXPECT_NEAR(dotProduct, 0.0, TEST_EPSILON);
+
+    // For v(3, 4, 0), perpendicular is (-4, 3, 0) normalized to (-0.8, 0.6, 0.0)
+    EXPECT_VECTOR_NEAR(perpendicular, Vector(-0.8, 0.6, 0.0), TEST_EPSILON);
 }
 
 // Example: Test using helper function
