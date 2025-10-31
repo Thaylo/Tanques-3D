@@ -430,8 +430,12 @@ Phase 2 completion unlocks Phase 3 development:
 
 ### Broad Phase (AABB-based)
 - ✅ AABB generation is complete for all shapes
-- **TODO:** Implement AABB tree or sweep-and-prune
-- **TODO:** Spatial hashing for fast lookups
+- **TODO:** Implement spatial acceleration structure
+  - **RECOMMENDED:** Octree for 3D spatial partitioning
+  - Alternative: AABB tree (BVH - Bounding Volume Hierarchy)
+  - Alternative: Sweep-and-prune (for moving objects)
+  - Alternative: Spatial hashing (simple but effective)
+- **TODO:** Collision pair generation (broad phase output)
 
 ### Narrow Phase (Precise Detection)
 - **TODO:** Sphere-Sphere collision (simplest)
