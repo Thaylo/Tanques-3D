@@ -13,7 +13,7 @@ public:
 	Camera(Movable *track);
 	void iterate();
 	void draw();
-	void posiciona();
+	void applyView();
 	//Movable *getTracked();
 	~Camera();
 private:

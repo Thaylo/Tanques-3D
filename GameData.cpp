@@ -111,7 +111,7 @@ void GameData::drawGame()
 // Here the "camera game" enters!!!
 
 
-	c.posiciona();
+	c.applyView();
 
 // Here the "camera game" ends!!!
 

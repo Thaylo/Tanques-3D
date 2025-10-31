@@ -32,7 +32,7 @@ void Camera::draw()
 
 }
 
-void Camera::posiciona()
+void Camera::applyView()
 {
    gluLookAt(
 	position.getX(),position.getY(),position.getZ(),

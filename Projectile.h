@@ -5,10 +5,10 @@
  *      Author: thaylo
  */
 
-#include "Agent.h"
-
 #ifndef PROJECTILE_H_
 #define PROJECTILE_H_
+
+#include "Agent.h"
 
 
 class Projectile : public Agent{
