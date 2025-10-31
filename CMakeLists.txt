@@ -76,6 +76,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/game
     ${CMAKE_CURRENT_SOURCE_DIR}/include/input
     ${CMAKE_CURRENT_SOURCE_DIR}/include/world
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/physics
     ${OPENGL_INCLUDE_DIRS}
     ${GLUT_INCLUDE_DIRS}
 )
@@ -88,6 +89,8 @@ endif()
 set(CORE_SOURCES
     src/core/Vector.cpp
     src/core/Timer.cpp
+    src/core/Matrix3x3.cpp
+    src/core/Quaternion.cpp
 )
 
 set(GRAPHICS_SOURCES
@@ -121,6 +124,11 @@ set(WORLD_SOURCES
     src/world/Terrain.cpp
 )
 
+set(PHYSICS_SOURCES
+    src/physics/RigidBody.cpp
+    src/physics/BoxShape.cpp
+)
+
 # Combine all sources
 set(ALL_SOURCES
     ${CORE_SOURCES}
@@ -129,6 +137,7 @@ set(ALL_SOURCES
     ${GAME_SOURCES}
     ${INPUT_SOURCES}
     ${WORLD_SOURCES}
+    ${PHYSICS_SOURCES}
 )
 
 # Header files (for IDEs and documentation)
@@ -136,6 +145,8 @@ set(HEADERS
     include/core/Vector.h
     include/core/Timer.h
     include/core/Constants.h
+    include/core/Matrix3x3.h
+    include/core/Quaternion.h
     include/graphics/GLDraw.h
     include/graphics/Window.h
     include/graphics/oDrawable.h
@@ -151,6 +162,9 @@ set(HEADERS
     include/game/Control.h
     include/input/joystick.h
     include/world/Terrain.h
+    include/physics/RigidBody.h
+    include/physics/Shape.h
+    include/physics/BoxShape.h
 )
 
 # Create executable target
