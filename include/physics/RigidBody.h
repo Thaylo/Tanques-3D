@@ -18,6 +18,9 @@
 
 namespace std {
 
+// Forward declaration
+class Shape;
+
 class RigidBody : public Matter, public Movable {
 protected:
     // Rotational state
@@ -28,6 +31,9 @@ protected:
     // Inertia properties (in body space)
     Matrix3x3 inertiaTensor;     // Inertia tensor (3x3 matrix)
     Matrix3x3 inertiaTensorInv;  // Inverse inertia tensor (for efficiency)
+
+    // Shape for collision detection and rendering
+    Shape* shape;                // Collision shape (not owned - do not delete)
 
     // Force and torque accumulators
     Vector forceAccumulator;
@@ -50,12 +56,17 @@ public:
     void setOrientation(const Quaternion &q);
     void setOrientation(double roll, double pitch, double yaw);  // From Euler angles
     void setAngularVelocity(const Vector &omega);
+    void setShape(Shape* s);  // Set collision shape (shape is not owned by RigidBody)
 
     // Getters
     Quaternion getOrientation() const { return orientation; }
     Vector getAngularVelocity() const { return angularVelocity; }
     Vector getAngularMomentum() const { return angularMomentum; }
     Matrix3x3 getInertiaTensor() const { return inertiaTensor; }
+    Shape* getShape() const { return shape; }
+
+    // Collision detection helper
+    struct AABB getAABB() const;  // Get axis-aligned bounding box
 
     // Override Movable getters to use quaternion-based orientation
     Vector getUp() const;

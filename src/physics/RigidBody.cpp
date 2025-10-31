@@ -6,6 +6,7 @@
  */
 
 #include "RigidBody.h"
+#include "Shape.h"
 #include "Constants.h"
 #include <cmath>
 
@@ -26,6 +27,8 @@ RigidBody::RigidBody() : Matter(), Movable() {
 
     linearDamping = 0.95;   // 5% damping per second
     angularDamping = 0.90;  // 10% damping per second
+
+    shape = nullptr;  // No shape by default
 }
 
 RigidBody::RigidBody(const Vector &pos, double mass) : RigidBody() {
@@ -57,6 +60,26 @@ void RigidBody::setAngularVelocity(const Vector &omega) {
     // Update angular momentum to be consistent: L = I * ω
     Matrix3x3 I = getInertiaTensorWorld();
     angularMomentum = I * omega;
+}
+
+void RigidBody::setShape(Shape* s) {
+    shape = s;
+    // Optionally update inertia tensor if shape is set
+    if (shape != nullptr) {
+        setInertiaTensor(shape->calculateInertiaTensor(getMass()));
+    }
+}
+
+AABB RigidBody::getAABB() const {
+    if (shape == nullptr) {
+        // Return a small AABB around position if no shape
+        double epsilon = 0.1;
+        return AABB(
+            Vector(position.getX() - epsilon, position.getY() - epsilon, position.getZ() - epsilon),
+            Vector(position.getX() + epsilon, position.getY() + epsilon, position.getZ() + epsilon)
+        );
+    }
+    return shape->getAABB(position, orientation);
 }
 
 // Override Movable getters to use quaternion-based orientation

@@ -130,6 +130,7 @@ set(PHYSICS_SOURCES
     src/physics/SphereShape.cpp
     src/physics/CylinderShape.cpp
     src/physics/PyramidShape.cpp
+    src/physics/Octree.cpp
 )
 
 # Combine all sources
@@ -171,6 +172,7 @@ set(HEADERS
     include/physics/SphereShape.h
     include/physics/CylinderShape.h
     include/physics/PyramidShape.h
+    include/physics/Octree.h
 )
 
 # Create executable target
