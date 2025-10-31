@@ -6,6 +6,7 @@
  */
 
 #include "Matter.h"
+#include <iostream>
 
 namespace std {
 
@@ -25,6 +26,13 @@ double Matter::getCharge() const
 
 void Matter::setMass(double mass_)
 {
+	// Validate mass (must be positive)
+	if (mass_ <= 0.0) {
+		cerr << "ERROR: Invalid mass value: " << mass_ << endl;
+		cerr << "       Mass must be positive. Setting to 1.0 as fallback." << endl;
+		mass = 1.0;
+		return;
+	}
 	mass = mass_;
 }
 

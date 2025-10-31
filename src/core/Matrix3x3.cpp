@@ -49,10 +49,24 @@ Matrix3x3 Matrix3x3::zero() {
 
 // Element access
 double Matrix3x3::get(int row, int col) const {
+    // Bounds checking
+    if (row < 0 || row >= 3 || col < 0 || col >= 3) {
+        cerr << "ERROR: Matrix3x3::get() index out of bounds: ["
+             << row << "][" << col << "]" << endl;
+        cerr << "       Valid range is [0-2][0-2]. Returning 0.0." << endl;
+        return 0.0;
+    }
     return m[row][col];
 }
 
 void Matrix3x3::set(int row, int col, double value) {
+    // Bounds checking
+    if (row < 0 || row >= 3 || col < 0 || col >= 3) {
+        cerr << "ERROR: Matrix3x3::set() index out of bounds: ["
+             << row << "][" << col << "]" << endl;
+        cerr << "       Valid range is [0-2][0-2]. Operation ignored." << endl;
+        return;
+    }
     m[row][col] = value;
 }
 
@@ -126,7 +140,10 @@ Matrix3x3 Matrix3x3::inverse() const {
 
     // Check for singular matrix
     if (fabs(det) < 1e-10) {
-        // Return identity matrix if singular (should not happen with valid inertia tensors)
+        // ERROR: Matrix is singular (non-invertible)
+        cerr << "ERROR: Attempting to invert singular matrix (det = " << det << ")" << endl;
+        cerr << "       This indicates a serious physics configuration error!" << endl;
+        cerr << "       Returning identity matrix as fallback." << endl;
         return Matrix3x3::identity();
     }
 

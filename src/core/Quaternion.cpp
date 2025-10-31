@@ -99,6 +99,8 @@ double Quaternion::norm() const {
 Quaternion Quaternion::normalize() const {
     double n = norm();
     if (n < 1e-10) {
+        cerr << "WARNING: Normalizing near-zero quaternion (norm = " << n << ")" << endl;
+        cerr << "         Returning identity quaternion as fallback." << endl;
         return Quaternion::identity();
     }
     return Quaternion(w / n, x / n, y / n, z / n);
@@ -111,6 +113,8 @@ Quaternion Quaternion::conjugate() const {
 Quaternion Quaternion::inverse() const {
     double n2 = w * w + x * x + y * y + z * z;
     if (n2 < 1e-10) {
+        cerr << "WARNING: Inverting near-zero quaternion (norm² = " << n2 << ")" << endl;
+        cerr << "         Returning identity quaternion as fallback." << endl;
         return Quaternion::identity();
     }
     return conjugate() * (1.0 / n2);
