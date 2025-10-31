@@ -255,3 +255,12 @@ add_custom_command(TARGET jogoThaylo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "Example: ${CMAKE_BINARY_DIR}/bin/jogoThaylo 15"
     COMMAND ${CMAKE_COMMAND} -E echo ""
 )
+
+# Enable testing support (optional, controlled by BUILD_TESTING option)
+option(BUILD_TESTING "Build the testing tree" ON)
+
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+    message(STATUS "Testing enabled - tests will be built")
+endif()

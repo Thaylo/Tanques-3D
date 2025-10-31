@@ -1,0 +1,21 @@
+# Compiled test binaries
+*.o
+*.out
+physics_tests
+
+# CMake build artifacts
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Test results and logs
+Testing/
+*.xml
+*.log
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+coverage_report/

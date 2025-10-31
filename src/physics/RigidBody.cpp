@@ -54,6 +54,9 @@ void RigidBody::setOrientation(double roll, double pitch, double yaw) {
 
 void RigidBody::setAngularVelocity(const Vector &omega) {
     angularVelocity = omega;
+    // Update angular momentum to be consistent: L = I * ω
+    Matrix3x3 I = getInertiaTensorWorld();
+    angularMomentum = I * omega;
 }
 
 // Override Movable getters to use quaternion-based orientation
