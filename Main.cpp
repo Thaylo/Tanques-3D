@@ -15,12 +15,15 @@ int level;
 
 
 int main(int argc, char** argv)
-{	
+{
+	// Initialize GLUT first (required for macOS/GLUT)
+	glutInit(&argc, argv);
+
 	if(argc >= 2)
 		level = atoi(argv[1]);
 	else
 	{
-		printf("Voce pode informar a quantidade de oponentes ao inicializar, por exemplo:\n\"./jogoThaylo 15\"");
+		printf("Voce pode informar a quantidade de oponentes ao inicializar, por exemplo:\n\"./jogoThaylo 15\"\n");
 		level = 3;
 	}
 

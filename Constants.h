@@ -14,12 +14,13 @@
 #define TURBINE_INC 21
 #define TURBINE_DEC 20
 
-#define ARROW_UP 111
-#define ARROW_DOWN 116
-#define ARROW_LEFT 113
-#define ARROW_RIGHT 114
-#define KEY_ESC 9
-#define KEY_SPACE 65
+// GLUT key codes for macOS compatibility
+#define ARROW_UP 101      // GLUT_KEY_UP
+#define ARROW_DOWN 103    // GLUT_KEY_DOWN
+#define ARROW_LEFT 100    // GLUT_KEY_LEFT
+#define ARROW_RIGHT 102   // GLUT_KEY_RIGHT
+#define KEY_ESC 27        // ASCII ESC
+#define KEY_SPACE 32      // ASCII Space
 
 #define ZOOM_IN 86
 #define ZOOM_OUT 82

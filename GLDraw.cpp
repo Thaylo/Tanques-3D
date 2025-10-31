@@ -138,8 +138,7 @@ GLuint * LoadGLTextures(char *source, GLuint *texture, int pos) {
 
 void initGl()
 {
-	int fudido = 0;
-	glutInit(&fudido,NULL);
+	// glutInit is now called in Main.cpp before window creation
 
    glClearColor (0.0, 0.0, 0.0, 0.0);
    glShadeModel (GL_SMOOTH);
