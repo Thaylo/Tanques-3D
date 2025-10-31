@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+jogoThaylo
+
+# IDE and editor files
+.claude/
+.vscode/
+.idea/

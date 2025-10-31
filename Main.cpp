@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 		level = atoi(argv[1]);
 	else
 	{
-		printf("Voce pode informar a quantidade de oponentes ao inicializar, por exemplo:\n\"./jogoThaylo 15\"\n");
+		printf("You can specify the number of opponents when starting, for example:\n\"./jogoThaylo 15\"\n");
 		level = 3;
 	}
 
@@ -34,10 +34,38 @@ int main(int argc, char** argv)
 
 	long lastTime = getCurrentTime();
 
+	// Set up GLUT callbacks
+	w->processWindow(mouseFunc, keyPress, keyRelease);
 
+	// Set up display callback
+	auto displayFunc = []() {
+		gameData->drawGame();
+		w->showWindow();
+	};
+	glutDisplayFunc(displayFunc);
+
+	// Set up idle callback for game logic
+	auto idleFunc = []() {
+		static long lastTime = getCurrentTime();
+		long currentTime = getCurrentTime();
+
+		if(currentTime - lastTime > TIME_STEP)
+		{
+			lastTime += TIME_STEP;
+			processLogic();
+		}
+
+		glutPostRedisplay();
+	};
+	glutIdleFunc(idleFunc);
+
+#ifdef __APPLE__
+	// On macOS, use GLUT's main loop
+	glutMainLoop();
+#else
+	// On Linux, use original game loop
 	while(true)
 	{
-
 		w->showWindow();
 		if(!w->processWindow(mouseFunc, keyPress, keyRelease))
 		{
@@ -50,14 +78,13 @@ int main(int argc, char** argv)
 		{
 			lastTime += TIME_STEP;
 			processLogic();
-		}		
+		}
 
 		gameData->drawGame();
-
-
 	}
 	delete w;
 	delete gameData;
+#endif
 
 	return 0;
 }

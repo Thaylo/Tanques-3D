@@ -17,13 +17,13 @@ void Agent::glVectorT(Vector v)
 	glVertex3f(v.getX(),v.getY(),v.getZ());
 }
 
-void Agent::desenhaRadar()
+void Agent::drawRadar()
 {
 	double size = 1.0/16;
-	if(maisProximo == NULL) return;
-	Vector direcaoMaisProx = maisProximo->getPosition() - position;
-	double seno = dir.crossProduct(direcaoMaisProx).getLengthVector();
-	double cosseno = dir.dotProduct(direcaoMaisProx);
+	if(closest == NULL) return;
+	Vector directionToClosest = closest->getPosition() - position;
+	double seno = dir.crossProduct(directionToClosest).getLengthVector();
+	double cosseno = dir.dotProduct(directionToClosest);
 
 	double phi;
 	if(cosseno == 0) phi = M_PI/2;
@@ -64,32 +64,32 @@ void Agent::desenhaRadar()
 
 Agent::Agent()
 {
-	maisProximo = NULL;
+	closest = NULL;
 	id = 0;
 	destroy = false;
-	recarga = 0;
+	reload = 0;
 	position = Vector(0,0,0);
-	velocity = Vector(-2,0,0); // Evita problema de inicialização na camera (GAMB, POG).
+	velocity = Vector(-2,0,0); // Avoids camera initialization problem (workaround).
 
 	dir = Vector(1,0,0);
 	side = Vector(0,1,0);
 	up = Vector(0,0,1);
-	disparando = false;
+	firing = false;
 }
 
 Agent::Agent(Vector pos)
 {
-	maisProximo = NULL;
+	closest = NULL;
 	id = 0;
 	destroy = false;
-	recarga = 0;
+	reload = 0;
 	position = pos;
-	velocity = Vector(-2,0,0); // Evita problema de inicialização na camera (GAMB, POG).
+	velocity = Vector(-2,0,0); // Avoids camera initialization problem (workaround).
 
 	dir = Vector(1,0,0);
 	side = Vector(0,1,0);
 	up = Vector(0,0,1);
-	disparando = false;
+	firing = false;
 
 }
 
@@ -131,7 +131,7 @@ void glNormalT(Vector v)
 		Vector P7 = P3 - dirl * 2;
 		Vector P8 = P4 - dirl * 2;
 
-		// Ajustes para caber na textura.
+		// Adjustments to fit texture.
 		P5 = P5 + dirl*0.23;
 		P8 = P8 + dirl*0.23;
 
@@ -147,15 +147,15 @@ void glNormalT(Vector v)
 		glColor3f(0.2,0.7,0.1);
 
 		if(id == PLAYER_ID)
-		desenhaRadar();
+		drawRadar();
 
 		glTranslatef(position.getX(),position.getY(),position.getZ());
 
 
 
 
-		// Fazendo a frente do tanque.
-		glBindTexture(GL_TEXTURE_2D, tanque[0]);
+		// Drawing the front of the tank.
+		glBindTexture(GL_TEXTURE_2D, tank[0]);
 		glBegin(GL_QUADS);
 			glNormalT(dir);
 			glTexCoord2f(0.0f, 0.0f); glVectorT(P1);
@@ -165,8 +165,8 @@ void glNormalT(Vector v)
 		glEnd();
 
 
-		// Fazendo o verso do tanque.
-		glBindTexture(GL_TEXTURE_2D, tanque[1]);
+		// Drawing the back of the tank.
+		glBindTexture(GL_TEXTURE_2D, tank[1]);
 		glBegin(GL_QUADS);
 			glNormalT(dir*(-1.0));
 			glTexCoord2f(0.0f, 0.0f); glVectorT(P5);
@@ -177,8 +177,8 @@ void glNormalT(Vector v)
 
 
 
-		// Fazendo a lateral direita do tanque.
-		glBindTexture(GL_TEXTURE_2D, tanque[2]);
+		// Drawing the right side of the tank.
+		glBindTexture(GL_TEXTURE_2D, tank[2]);
 		glBegin(GL_QUADS);
 			glNormalT(side*(-1.0));
 			glTexCoord2f(0.15f, 0.0f); glVectorT(P5);
@@ -187,8 +187,8 @@ void glNormalT(Vector v)
 			glTexCoord2f(0.0f, 1.0f); glVectorT(P6);
 		glEnd();
 
-		// Fazendo a lateral esquerda do tanque.
-		glBindTexture(GL_TEXTURE_2D, tanque[3]);
+		// Drawing the left side of the tank.
+		glBindTexture(GL_TEXTURE_2D, tank[3]);
 		glBegin(GL_QUADS);
 			glNormalT(side);
 			glTexCoord2f(0.06f, 0.0f); glVectorT(P4);
@@ -198,8 +198,8 @@ void glNormalT(Vector v)
 		glEnd();
 
 
-		// Fazendo o topo do tanque.
-		glBindTexture(GL_TEXTURE_2D, tanque[4]);
+		// Drawing the top of the tank.
+		glBindTexture(GL_TEXTURE_2D, tank[4]);
 		glBegin(GL_QUADS);
 			glNormalT(up);
 			glTexCoord2f(0.0f, 0.0f); glVectorT(P6);
@@ -217,22 +217,22 @@ void Agent::iterate()
 
 
 	double dist = 1000;
-	double menor_dist = dist;
-	for(int i = 0; i < gameData->getQuant(); i++)
+	double min_dist = dist;
+	for(int i = 0; i < gameData->getCount(); i++)
 	{
 		Agent *ai = gameData->getAgents()[i];
 		dist = (ai->getPosition() - position).getLengthVector();
-		if(dist < menor_dist && ai->getId() != PLAYER_ID)
+		if(dist < min_dist && ai->getId() != PLAYER_ID)
 		{
-			Projetil *j = dynamic_cast <Projetil *>(ai);
+			Projectile *j = dynamic_cast <Projectile *>(ai);
 			if(j == NULL)
-			maisProximo = ai;
+			closest = ai;
 		}
 	}
 //	if(id == PLAYER_ID)
-//	cout << maisProximo->getId() << "\n";
+//	cout << closest->getId() << "\n";
 
-	recarga++;
+	reload++;
 	controlAction();
 	Controlable::iterate();
 }
@@ -253,21 +253,21 @@ void Agent::controlAction()
 
 	Vector nDir = dir;
 
-	if(control->space) atirar();
+	if(control->space) shoot();
 
-	aceleration = nDir.setVectorLength(MOVABLE_MAX_ACCELERATION) * vert; // O tanque sempre vai na direção oposta ao motor (portanto dir).
+	aceleration = nDir.setVectorLength(MOVABLE_MAX_ACCELERATION) * vert; // The tank always goes in the opposite direction of the motor (therefore dir).
 
 	v_yaw = -hor;
 
 
 }
 
-void Agent::atirar()
+void Agent::shoot()
 {
-	if(recarga > ROUNDS_RECARGA)
+	if(reload > ROUNDS_RELOAD)
 	{
-		recarga = 0;
-		disparando = true;
+		reload = 0;
+		firing = true;
 	}
 }
 
@@ -281,11 +281,11 @@ bool Agent::isToDestroy()
 	return destroy;
 }
 
-bool Agent::checkDisparo()
+bool Agent::checkFire()
 {
-	if(disparando)
+	if(firing)
 	{
-		disparando = false;
+		firing = false;
 		return true;
 	}
 	else return false;

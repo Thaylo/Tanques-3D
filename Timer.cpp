@@ -4,7 +4,7 @@ long int getCurrentTime(){
 	 struct timeval now;
 	 long int seconds, useconds;    
 
-    gettimeofday(&now, (timezone*) 0);
+    gettimeofday(&now, NULL);
 
     seconds  = now.tv_sec;
     useconds = now.tv_usec;

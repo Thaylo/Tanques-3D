@@ -17,10 +17,10 @@ private:
 	Agent *target;
 public:
 	Enemy();
-	Enemy(Agent *alvo);
+	Enemy(Agent *targetAgent);
 	void controlAction();
 	virtual ~Enemy();
-	virtual void atirar();
+	virtual void shoot();
 };
 
 } /* namespace std */

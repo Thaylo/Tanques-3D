@@ -24,7 +24,7 @@ OBJECTS=Main.o \
 Agent.o \
 Enemy.o \
 Terrain.o \
-Projetil.o \
+Projectile.o \
 Window.o \
 Control.o \
 Controlable.o \

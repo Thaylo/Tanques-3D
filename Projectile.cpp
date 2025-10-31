@@ -1,46 +1,46 @@
 /*
- * Projetil.cpp
+ * Projectile.cpp
  *
  *  Created on: 18/04/2013
  *      Author: thaylo
  */
 
-#include "Projetil.h"
+#include "Projectile.h"
 #include "GameData.h"
 
 
 extern GameData* gameData;
 
-Projetil::Projetil()
+Projectile::Projectile()
 {
 	initialPos = position;
 	distance = 0;
 	position = Vector(0,0,0);
-	velocity = Vector(0.0001,0,0); // Evita problema de inicialização na camera (GAMB, POG).
+	velocity = Vector(0.0001,0,0); // Avoids camera initialization problem (workaround).
 
 	dir = Vector(1,0,0);
 	side = Vector(0,1,0);
 	up = Vector(0,0,1);
-	disparando = false;
+	firing = false;
 }
 
 
-Projetil::Projetil(Agent *atirador)
+Projectile::Projectile(Agent *shooter)
 {
 	initialPos = position;
 	distance = 0;
-	position = atirador->getPosition();
-	velocity = atirador->getDir(); // Evita problema de inicialização na camera (GAMB, POG).
+	position = shooter->getPosition();
+	velocity = shooter->getDir(); // Avoids camera initialization problem (workaround).
 	velocity.setVectorLength(MOVABLE_MAX_VELOCITY*3);
 
-	dir = atirador->getDir();
+	dir = shooter->getDir();
 
-	side = atirador->getSide();
-	up = atirador->getUp();
-	disparando = false;
+	side = shooter->getSide();
+	up = shooter->getUp();
+	firing = false;
 }
 
-void Projetil::draw()
+void Projectile::draw()
 {
 
 	glColor3f(1,0,0);
@@ -77,15 +77,15 @@ void Projetil::draw()
 
 }
 
-void Projetil::iterate()
+void Projectile::iterate()
 {
 	Agent::iterate();
 	//velocity = dir;
 	velocity.setVectorLength(MOVABLE_MAX_VELOCITY );
 
 	Agent **ag = gameData->getAgents();
-	int quant = gameData->getQuant();
-	for(int i = 0; i < quant; i++)
+	int count = gameData->getCount();
+	for(int i = 0; i < count; i++)
 	{
 		double dist = (ag[i]->getPosition()-position).getLengthVector();
 		if(dist < 0.5 && (this->getId() != ag[i]->getId()))
@@ -101,5 +101,5 @@ void Projetil::iterate()
 
 
 
-Projetil::~Projetil() {
+Projectile::~Projectile() {
 }

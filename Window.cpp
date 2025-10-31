@@ -75,7 +75,13 @@ bool window::processWindow(void (*mouseFunc)(int type, int button, int x, int y)
 	glutMouseFunc(mouseCallback);
 
 	// Process events
+	#ifndef __APPLE__
+	// On Linux with freeglut, we can process events without blocking
 	glutMainLoopEvent();
+	#else
+	// On macOS, GLUT handles events through callbacks automatically
+	// Just return true to continue the game loop
+	#endif
 
 	return true;
 }

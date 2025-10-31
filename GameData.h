@@ -11,7 +11,7 @@
 #include "Camera.h"
 #include <list>
 #include <vector>
-#include "Projetil.h"
+#include "Projectile.h"
 #include "Enemy.h"
 
 extern GLfloat mat_specular[];
@@ -22,12 +22,12 @@ class GameData
 {
 private:
 	Control control;
-	Agent *jogador;
+	Agent *player;
 	Agent *agents[4000];
-	int quant;
+	int count;
 	Ground g;
 	Camera c;
-	int estadoJogo;
+	int gameState;
 
 
 public:
@@ -37,7 +37,7 @@ public:
 	Control *getControl();
 	void iterateGameData();
 	void drawGame();
-	int getQuant(){return quant;}
+	int getCount(){return count;}
 	Agent **getAgents() { return agents; }
 	~GameData();
 

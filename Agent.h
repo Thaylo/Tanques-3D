@@ -13,7 +13,7 @@
 #include "Matter.h"
 #include "Controlable.h"
 
-extern GLuint tanque[5];
+extern GLuint tank[5];
 
 
 namespace std {
@@ -23,20 +23,20 @@ private:
 	int id;
 	bool destroy;
 public:
-	bool disparando;
-	int recarga;
-	Agent *maisProximo;
+	bool firing;
+	int reload;
+	Agent *closest;
 
 	Agent();
 	Agent(Vector x);
 	void setId(int idx);
 	int getId();
-	void desenhaRadar();
+	void drawRadar();
 	void draw();
 	void controlAction();
 
-	virtual void atirar();
-	bool checkDisparo();
+	virtual void shoot();
+	bool checkFire();
 
 	void destroyNow();
 	bool isToDestroy();

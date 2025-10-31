@@ -5,18 +5,18 @@ extern int level;
 
 GameData::GameData()
 {
-	jogador = NULL;
-	quant = 0;
+	player = NULL;
+	count = 0;
 	control = initializeControl();
 
 	insertPlayer();
-	int quantInimigos = level; // Setado pelo usuário.
-	for(int i = 0; i < quantInimigos; i++)
+	int enemyCount = level; // Set by user.
+	for(int i = 0; i < enemyCount; i++)
 	{
-		Enemy *e = new Enemy(jogador);
+		Enemy *e = new Enemy(player);
 		e->setId(0);
 		e->setPosition(Vector((rand()%100)/4.0 - 25.0,((rand()%100)/4.0 - 25.0),0.0));
-		agents[quant++] = e;
+		agents[count++] = e;
 	}
 
 
@@ -24,13 +24,13 @@ GameData::GameData()
 
 void GameData::insertPlayer()
 {
-	jogador = new Agent(Vector(0,0,0.0));
-	jogador->setController(&control);
-	jogador->setId(PLAYER_ID);
-	agents[quant++] = jogador;
+	player = new Agent(Vector(0,0,0.0));
+	player->setController(&control);
+	player->setId(PLAYER_ID);
+	agents[count++] = player;
 
-	c = Camera(jogador);
-	g = Ground(jogador);
+	c = Camera(player);
+	g = Ground(player);
 }
 
 Control *GameData::getControl()
@@ -45,35 +45,35 @@ void GameData::iterateGameData()
 	g.iterate();
 	c.iterate();
 
-	for(int i = 0; i < quant; i++)
+	for(int i = 0; i < count; i++)
 	{
 		aux = agents[i];
 		aux->iterate();
-		if(aux->checkDisparo())
+		if(aux->checkFire())
 		{
-			Projetil *disparo = new Projetil(aux);
+			Projectile *shot = new Projectile(aux);
 
-			disparo->setId(aux->getId());
-			agents[quant++] = disparo;
+			shot->setId(aux->getId());
+			agents[count++] = shot;
 		}
 		if(aux->isToDestroy())
 		{
 			if(aux->getId() == PLAYER_ID)
 			{
-				Projetil *isTiro = dynamic_cast<Projetil *>(aux);
-				if (!isTiro)
+				Projectile *isShot = dynamic_cast<Projectile *>(aux);
+				if (!isShot)
 				{
 					std::cout << "Game Over: LOSER!" << std::endl;
 					getControl()->keyEsc = TRUE;
 				}
 			}
 			delete aux;
-			agents[i] = agents[quant - 1];
-			--quant;
+			agents[i] = agents[count - 1];
+			--count;
 			--i;
 		}
 	}
-	if (1 == quant && jogador == agents[0])
+	if (1 == count && player == agents[0])
 	{
 		std::cout << "Game Over: WINNER!" << std::endl;
 		getControl()->keyEsc = TRUE;
@@ -84,7 +84,7 @@ void GameData::iterateGameData()
 
 GameData::~GameData()
 {
-	for(int i = 0; i < quant; i++)
+	for(int i = 0; i < count; i++)
 	{
 		delete agents[i];
 	}
@@ -103,23 +103,23 @@ void GameData::drawGame()
 
 	//glutSolidSphere (0.04, 10, 8);
 
-// Preparando pra mexer na camera!
+// Preparing to work with camera!
 
 
 
 	glPushMatrix();
-// Aqui deve entrar o "jogo de Câmera"!!!
+// Here the "camera game" enters!!!
 
 
 	c.posiciona();
 
-// Aqui termina o "jogo de câmera"!!!
+// Here the "camera game" ends!!!
 
 	g.draw();
 	//c.draw();
 
 
-	for(int i = 0; i < quant; i++)
+	for(int i = 0; i < count; i++)
 	{
 		agents[i]->draw();
 	}

@@ -4,7 +4,7 @@
 // Milliseconds
 
 //#define TIME_STEP 15
-#define TIME_STEP 20 // para desenhar porcarias rápido
+#define TIME_STEP 20 // for quick drawing
 
 #define TRUE 1
 
@@ -33,8 +33,8 @@
 
 #define DEFAULT_GRAVITY 0.005
 
-#define ROUNDS_RECARGA 5
-#define ROUNDS_RECARGA_HANDICAP_FOR_IA 5
+#define ROUNDS_RELOAD 5
+#define ROUNDS_RELOAD_HANDICAP_FOR_AI 5
 
 #define PLAYER_ID 642
 

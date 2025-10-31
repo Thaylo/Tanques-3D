@@ -14,16 +14,16 @@ Enemy::Enemy() {
 	target = NULL;
 }
 
-Enemy::Enemy(Agent *alvo) {
+Enemy::Enemy(Agent *targetAgent) {
 	control = NULL;
-	target = alvo;
+	target = targetAgent;
 }
 
 void Enemy::controlAction()
 {
 	if(target == NULL)
 	{
-		cout << "Alvo nao inicializado para o inimigo\n";
+		cout << "Target not initialized for enemy\n";
 		return;
 	}
 	Vector A = target->getPosition() - position;
@@ -53,18 +53,18 @@ void Enemy::controlAction()
 	else
 	{
 		aceleration = 0;
-		if(A.getLengthVector() < 13 && fabs(theta) < M_PI/15) atirar();
+		if(A.getLengthVector() < 13 && fabs(theta) < M_PI/15) shoot();
 	}
 }
 
 Enemy::~Enemy() {
 }
 
-void Enemy::atirar()
+void Enemy::shoot()
 {
-	if (recarga > ROUNDS_RECARGA * ROUNDS_RECARGA_HANDICAP_FOR_IA)
+	if (reload > ROUNDS_RELOAD * ROUNDS_RELOAD_HANDICAP_FOR_AI)
 	{
-		Agent::atirar();
+		Agent::shoot();
 	}
 }
 

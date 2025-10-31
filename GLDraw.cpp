@@ -4,7 +4,7 @@
 #define Height 800
 
 GLuint t[2];
-GLuint tanque[5];
+GLuint tank[5];
 
 GLfloat mat_specular[] = { 1.0, 1, 1, 1};
 GLfloat mat_shininess[] = { 50.0 };
@@ -174,11 +174,11 @@ void initGl()
 	char t3[20] = "lateralEsq.bmp";
 	char t4[20] = "topo.bmp";
 
-	LoadGLTextures(t0,tanque,0);
-	LoadGLTextures(t1,tanque,1);
-	LoadGLTextures(t2,tanque,2);
-	LoadGLTextures(t3,tanque,3);
-	LoadGLTextures(t4,tanque,4);
+	LoadGLTextures(t0,tank,0);
+	LoadGLTextures(t1,tank,1);
+	LoadGLTextures(t2,tank,2);
+	LoadGLTextures(t3,tank,3);
+	LoadGLTextures(t4,tank,4);
 
 
 	glEnable(GL_TEXTURE_2D);			// ativa mapeamento por textura
