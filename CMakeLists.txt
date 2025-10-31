@@ -127,6 +127,9 @@ set(WORLD_SOURCES
 set(PHYSICS_SOURCES
     src/physics/RigidBody.cpp
     src/physics/BoxShape.cpp
+    src/physics/SphereShape.cpp
+    src/physics/CylinderShape.cpp
+    src/physics/PyramidShape.cpp
 )
 
 # Combine all sources
@@ -165,6 +168,9 @@ set(HEADERS
     include/physics/RigidBody.h
     include/physics/Shape.h
     include/physics/BoxShape.h
+    include/physics/SphereShape.h
+    include/physics/CylinderShape.h
+    include/physics/PyramidShape.h
 )
 
 # Create executable target

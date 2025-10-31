@@ -50,6 +50,9 @@ set(TEST_CORE_SOURCES
 set(TEST_PHYSICS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/physics/RigidBody.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/BoxShape.cpp
+    ${CMAKE_SOURCE_DIR}/src/physics/SphereShape.cpp
+    ${CMAKE_SOURCE_DIR}/src/physics/CylinderShape.cpp
+    ${CMAKE_SOURCE_DIR}/src/physics/PyramidShape.cpp
 )
 
 set(TEST_ENTITIES_SOURCES
