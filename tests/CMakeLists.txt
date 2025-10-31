@@ -54,6 +54,7 @@ set(TEST_PHYSICS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/physics/CylinderShape.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/PyramidShape.cpp
     ${CMAKE_SOURCE_DIR}/src/physics/Octree.cpp
+    ${CMAKE_SOURCE_DIR}/src/physics/CollisionDetector.cpp
 )
 
 set(TEST_ENTITIES_SOURCES
