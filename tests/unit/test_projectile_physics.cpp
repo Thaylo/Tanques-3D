@@ -132,3 +132,39 @@ TEST(ProjectilePhysics, ProjectileMovementWithoutClamping) {
             << std::endl;
   EXPECT_NEAR(pos1sec.getX(), 200.0, 0.001);
 }
+
+// Test tank acceleration
+TEST(ProjectilePhysics, TankAccelerationTest) {
+  std::cout << "\n=== Tank Acceleration Test ===" << std::endl;
+
+  Movable tank;
+  tank.setPosition(Vector(0, 0, 0));
+  tank.setVelocity(Vector(0, 0, 0));
+  tank.setAcceleration(Vector(MOVABLE_MAX_ACCELERATION, 0, 0)); // 10 m/s²
+
+  std::cout << "Acceleration: " << MOVABLE_MAX_ACCELERATION << " m/s²"
+            << std::endl;
+  std::cout << "Friction: " << MOVABLE_LINEAR_FRICTION << std::endl;
+  std::cout << "Max velocity: " << MOVABLE_MAX_VELOCITY << " m/s" << std::endl;
+
+  // Simulate 1 second (50 ticks)
+  for (int i = 0; i < 50; i++) {
+    tank.iterate();
+    if (i == 0 || i == 9 || i == 24 || i == 49) {
+      std::cout << "Tick " << (i + 1)
+                << ": vel=" << tank.getVelocity().getLengthVector()
+                << " m/s, pos=" << tank.getPosition().getX() << " m"
+                << std::endl;
+    }
+  }
+
+  double finalVel = tank.getVelocity().getLengthVector();
+  double finalPos = tank.getPosition().getX();
+
+  std::cout << "After 1 second: velocity=" << finalVel
+            << " m/s, position=" << finalPos << " m" << std::endl;
+
+  // With accel=10, friction=0.3, equilibrium is vel = accel/friction = 33 m/s
+  // But capped at 20 m/s, so should reach 20 m/s
+  EXPECT_GE(finalVel, 15.0); // Should reach at least 15 m/s after 1 second
+}

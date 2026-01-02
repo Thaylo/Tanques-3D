@@ -43,16 +43,16 @@
 // PHYSICS CONSTANTS (SI UNITS)
 // =============================================================
 
-// Tank movement - balanced for responsive gameplay
-// At equilibrium: accel = friction * velocity, so max_vel = accel / friction
-// With accel=10, friction=0.3: max practical vel = 33 m/s (above cap of 20)
-#define MOVABLE_MAX_ACCELERATION 10.0 // m/s² (snappy acceleration)
-#define MOVABLE_MAX_VELOCITY 20.0     // m/s (72 km/h, arcade feel)
-#define MOVABLE_LINEAR_FRICTION 0.3   // Low drag for momentum
+// Tank movement - tuned for FAST, ARCADE gameplay
+// Test showed friction=0.3 made tanks slow. Reduced significantly.
+// At equilibrium: max_vel = accel / friction = 50 / 0.1 = 500 (capped at 25)
+#define MOVABLE_MAX_ACCELERATION 50.0 // m/s² (very snappy)
+#define MOVABLE_MAX_VELOCITY 25.0     // m/s (90 km/h, fast arcade)
+#define MOVABLE_LINEAR_FRICTION 0.1   // Very low drag
 #define DEFAULT_GRAVITY 9.81          // m/s² (standard gravity)
 
-// Tank rotation (responsive turning)
-#define TURN_RATE 1.2 // rad/s (about 70°/s)
+// Tank rotation (very responsive)
+#define TURN_RATE 2.0 // rad/s (about 115°/s)
 
 // Projectile physics (scaled for gameplay, real is 1000+ m/s)
 #define PROJECTILE_SPEED 200.0        // m/s (~720 km/h, visible but fast)

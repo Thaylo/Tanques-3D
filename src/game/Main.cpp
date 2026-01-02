@@ -327,10 +327,15 @@ int main(int argc, char *argv[]) {
     }
 
     long currentTime = getCurrentTime();
-    if (currentTime - lastIterationTime >= TIME_STEP) {
+    long elapsedTime = currentTime - lastIterationTime;
+
+    // Accumulator-based physics: run multiple steps if needed to catch up
+    // This ensures physics ALWAYS runs at 50Hz (TIME_STEP=20ms) in real time
+    while (elapsedTime >= TIME_STEP) {
       gameData->setControl(control);
       gameData->iterateGameData();
-      lastIterationTime = currentTime;
+      elapsedTime -= TIME_STEP;
+      lastIterationTime += TIME_STEP;
       control.newLeftPressed = false;
       control.newRightPressed = false;
     }
