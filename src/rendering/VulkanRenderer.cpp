@@ -829,11 +829,7 @@ void VulkanRenderer::beginFrame() {
                      VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
 
   vertices.clear();
-
-  // Add a test triangle (red) centered on screen
-  vertices.push_back({{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}});
-  vertices.push_back({{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0, 0}});
-  vertices.push_back({{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0, 0}});
+  // Entities added via drawTriangle/drawQuad calls between beginFrame/endFrame
 }
 
 void VulkanRenderer::endFrame() {
