@@ -3,11 +3,16 @@
  *
  * Created: 15/10/2012
  * Author: thaylo
+ *
+ * Uses modern C++ features: range-based for, auto, algorithms
  */
 
 #include "entities/Agent.h"
 #include "entities/Projectile.h"
 #include "game/GameData.h"
+
+#include <algorithm>
+#include <limits>
 
 extern GameData *gameData;
 
@@ -16,7 +21,7 @@ void Agent::glVectorT(const Vector &v) {
 }
 
 void Agent::drawRadar() {
-  double size = 1.0 / 16;
+  constexpr double size = 1.0 / 16;
   if (nearestEnemy == nullptr)
     return;
 
@@ -24,12 +29,7 @@ void Agent::drawRadar() {
   double sine = dir.crossProduct(dirToNearest).getLengthVector();
   double cosine = dir.dotProduct(dirToNearest);
 
-  double phi;
-  if (cosine == 0) {
-    phi = M_PI / 2;
-  } else {
-    phi = atan2(sine, cosine);
-  }
+  double phi = (cosine == 0) ? M_PI / 2 : atan2(sine, cosine);
 
   glTranslated(position.getX(), position.getY(), position.getZ() + 0.2);
 
@@ -88,9 +88,10 @@ int Agent::getId() { return id; }
 void glNormalT(const Vector &v) { glNormal3f(v.getX(), v.getY(), v.getZ()); }
 
 void Agent::draw() {
-  double size = 1 / 8.0;
+  constexpr double size = 1 / 8.0;
   // Golden ratio for tank proportions
-  Vector dirl = dir * size * (1 + sqrt(5)) / 2.0;
+  const double goldenRatio = (1 + sqrt(5)) / 2.0;
+  Vector dirl = dir * size * goldenRatio;
   Vector sidel = side * size;
   Vector upl = up * size;
 
@@ -109,7 +110,7 @@ void Agent::draw() {
   P5 = P5 + dirl * 0.23;
   P8 = P8 + dirl * 0.23;
 
-  glColor3f(0.2, 0.7, 0.1);
+  glColor3f(0.2f, 0.7f, 0.1f);
 
   // Draw radar only for player
   if (id == PLAYER_ID) {
@@ -152,7 +153,7 @@ void Agent::draw() {
   glNormalT(side * (-1.0));
   glTexCoord2f(0.15f, 0.0f);
   glVectorT(P5);
-  glTexCoord2f(1.0f - 0.06f, 0.0f);
+  glTexCoord2f(0.94f, 0.0f);
   glVectorT(P1);
   glTexCoord2f(1.0f, 1.0f);
   glVectorT(P2);
@@ -166,7 +167,7 @@ void Agent::draw() {
   glNormalT(side);
   glTexCoord2f(0.06f, 0.0f);
   glVectorT(P4);
-  glTexCoord2f(1.0f - 0.15f, 0.0f);
+  glTexCoord2f(0.85f, 0.0f);
   glVectorT(P8);
   glTexCoord2f(1.0f, 1.0f);
   glVectorT(P7);
@@ -192,18 +193,33 @@ void Agent::draw() {
 }
 
 void Agent::iterate() {
-  // Find nearest enemy (excluding projectiles)
-  double dist = 1000;
-  double minDist = dist;
-  for (int i = 0; i < gameData->getAgentCount(); i++) {
-    Agent *ai = gameData->getAgents()[i];
-    dist = (ai->getPosition() - position).getLengthVector();
-    if (dist < minDist && ai->getId() != PLAYER_ID) {
-      Projectile *proj = dynamic_cast<Projectile *>(ai);
-      if (proj == nullptr) {
-        nearestEnemy = ai;
-        minDist = dist;
-      }
+  // Find nearest enemy using STL algorithm with min_element
+  const auto &agentsVec = gameData->getAgentsVector();
+
+  double minDist = std::numeric_limits<double>::max();
+  nearestEnemy = nullptr;
+
+  // Use range-based for with structured bindings would be nice, but we need
+  // distance calc
+  auto nearestIt = std::min_element(
+      agentsVec.begin(), agentsVec.end(), [this](const auto &a, const auto &b) {
+        // Skip self, projectiles, and player when finding enemies
+        auto distA = (a->getId() != PLAYER_ID &&
+                      dynamic_cast<Projectile *>(a.get()) == nullptr)
+                         ? (a->getPosition() - position).getLengthVector()
+                         : std::numeric_limits<double>::max();
+        auto distB = (b->getId() != PLAYER_ID &&
+                      dynamic_cast<Projectile *>(b.get()) == nullptr)
+                         ? (b->getPosition() - position).getLengthVector()
+                         : std::numeric_limits<double>::max();
+        return distA < distB;
+      });
+
+  if (nearestIt != agentsVec.end()) {
+    Agent *candidate = nearestIt->get();
+    if (candidate->getId() != PLAYER_ID &&
+        dynamic_cast<Projectile *>(candidate) == nullptr) {
+      nearestEnemy = candidate;
     }
   }
 

@@ -3,10 +3,14 @@
  *
  * Created: 18/04/2013
  * Author: thaylo
+ *
+ * Uses modern C++ features: range-based for, auto, algorithms
  */
 
 #include "entities/Projectile.h"
 #include "game/GameData.h"
+
+#include <algorithm>
 
 extern GameData *gameData;
 
@@ -37,7 +41,7 @@ void Projectile::draw() {
   glColor3f(1, 0, 0);
   glTranslated(position.getX(), position.getY(), position.getZ());
 
-  double size = 1 / 5.0;
+  constexpr double size = 1 / 5.0;
 
   // Draw projectile as a set of triangles forming a pointed shape
   glBegin(GL_TRIANGLES);
@@ -71,21 +75,23 @@ void Projectile::iterate() {
   Agent::iterate();
   velocity.setVectorLength(MOVABLE_MAX_VELOCITY);
 
-  Agent **agents = gameData->getAgents();
-  int count = gameData->getAgentCount();
+  const auto &agentsVec = gameData->getAgentsVector();
+  constexpr double collisionRadius = 0.5;
+  constexpr double maxTravelDistance = 40.0;
 
-  for (int i = 0; i < count; i++) {
-    double dist = (agents[i]->getPosition() - position).getLengthVector();
+  // Check collision with any agent using STL algorithm
+  std::for_each(agentsVec.begin(), agentsVec.end(), [this](const auto &agent) {
+    double dist = (agent->getPosition() - position).getLengthVector();
 
     // Check collision (but not with self)
-    if (dist < 0.5 && (this->getId() != agents[i]->getId())) {
-      agents[i]->markForDestruction();
+    if (dist < collisionRadius && this->getId() != agent->getId()) {
+      agent->markForDestruction();
     }
+  });
 
-    // Destroy after traveling max distance
-    if ((position - initialPos).getLengthVector() > 40) {
-      markForDestruction();
-    }
+  // Destroy after traveling max distance
+  if ((position - initialPos).getLengthVector() > maxTravelDistance) {
+    markForDestruction();
   }
 }
 

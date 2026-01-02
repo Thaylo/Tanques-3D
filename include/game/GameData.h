@@ -1,5 +1,7 @@
 /**
  * GameData.h - Game state management
+ *
+ * Uses modern C++ features: unique_ptr, vector, STL algorithms
  */
 
 #ifndef GAMEDATA_H
@@ -14,8 +16,8 @@
 #include "rendering/GLDraw.h"
 #include "rendering/Ground.h"
 
-#include <cstdlib>
-#include <list>
+#include <algorithm>
+#include <memory>
 #include <vector>
 
 // OpenGL material/lighting globals
@@ -25,28 +27,35 @@ extern GLfloat light_position[];
 
 /**
  * Main game state container managing all entities, input, and rendering.
+ * Uses smart pointers for automatic memory management.
  */
 class GameData {
 private:
   Control control;
-  Agent *player;
-  Agent *agents[4000];
-  int agentCount;
-  Ground ground;
-  Camera camera;
+  Agent *player; // Non-owning pointer to player in agents vector
+  std::vector<std::unique_ptr<Agent>> agents;
+  std::unique_ptr<Ground> ground;
+  std::unique_ptr<Camera> camera;
   int gameState;
 
 public:
   GameData();
-  ~GameData();
+  ~GameData() = default; // unique_ptr handles cleanup
 
   void insertPlayer();
   Control *getControl();
   void iterateGameData();
   void drawGame();
 
-  int getAgentCount() { return agentCount; }
-  Agent **getAgents() { return agents; }
+  size_t getAgentCount() const { return agents.size(); }
+
+  // Provide read-only access to agents for iteration
+  const std::vector<std::unique_ptr<Agent>> &getAgentsVector() const {
+    return agents;
+  }
+
+  // Legacy compatibility - returns raw pointers for Agent iteration
+  std::vector<Agent *> getAgentPointers() const;
 };
 
 #endif // GAMEDATA_H
