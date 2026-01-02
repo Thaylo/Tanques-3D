@@ -99,6 +99,7 @@ add_executable(Tanques3DTests
     tests/unit/test_vector.cpp
     tests/unit/test_movable.cpp
     tests/unit/test_control.cpp
+    tests/unit/test_timer.cpp
     tests/integration/test_gamedata.cpp
 )
 target_link_libraries(Tanques3DTests PRIVATE

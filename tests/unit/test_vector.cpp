@@ -5,6 +5,7 @@
 #include "core/Vector.h"
 #include <cmath>
 #include <gtest/gtest.h>
+#include <sstream>
 
 // Constructor tests
 TEST(VectorTest, DefaultConstructorIsZero) {
@@ -196,4 +197,129 @@ TEST(VectorTest, AssignmentZero) {
   EXPECT_DOUBLE_EQ(v.getX(), 0.0);
   EXPECT_DOUBLE_EQ(v.getY(), 0.0);
   EXPECT_DOUBLE_EQ(v.getZ(), 0.0);
+}
+
+// C++23 compound assignment tests
+TEST(VectorTest, CompoundAddition) {
+  Vector v(1, 2, 3);
+  v += Vector(4, 5, 6);
+  EXPECT_DOUBLE_EQ(v.getX(), 5.0);
+  EXPECT_DOUBLE_EQ(v.getY(), 7.0);
+  EXPECT_DOUBLE_EQ(v.getZ(), 9.0);
+}
+
+TEST(VectorTest, CompoundSubtraction) {
+  Vector v(5, 7, 9);
+  v -= Vector(1, 2, 3);
+  EXPECT_DOUBLE_EQ(v.getX(), 4.0);
+  EXPECT_DOUBLE_EQ(v.getY(), 5.0);
+  EXPECT_DOUBLE_EQ(v.getZ(), 6.0);
+}
+
+TEST(VectorTest, CompoundMultiplication) {
+  Vector v(1, 2, 3);
+  v *= 2.0;
+  EXPECT_DOUBLE_EQ(v.getX(), 2.0);
+  EXPECT_DOUBLE_EQ(v.getY(), 4.0);
+  EXPECT_DOUBLE_EQ(v.getZ(), 6.0);
+}
+
+// getLengthSquared tests
+TEST(VectorTest, LengthSquared) {
+  Vector v(3, 4, 0);
+  EXPECT_DOUBLE_EQ(v.getLengthSquared(), 25.0);
+}
+
+TEST(VectorTest, LengthSquared3D) {
+  Vector v(1, 2, 2);
+  EXPECT_DOUBLE_EQ(v.getLengthSquared(), 9.0);
+}
+
+// getNormalVector tests
+TEST(VectorTest, GetNormalVector) {
+  Vector v(3, 4, 0);
+  Vector norm = v.getNormalVector();
+  EXPECT_NEAR(norm.getX(), 0.6, 1e-9);
+  EXPECT_NEAR(norm.getY(), 0.8, 1e-9);
+  EXPECT_NEAR(norm.getLengthVector(), 1.0, 1e-9);
+}
+
+TEST(VectorTest, GetNormalVectorZero) {
+  Vector v(0, 0, 0);
+  Vector norm = v.getNormalVector();
+  EXPECT_DOUBLE_EQ(norm.getX(), 0.0);
+  EXPECT_DOUBLE_EQ(norm.getY(), 0.0);
+  EXPECT_DOUBLE_EQ(norm.getZ(), 0.0);
+}
+
+// Spaceship operator tests
+TEST(VectorTest, SpaceshipOperatorEqual) {
+  Vector a(1, 0, 0);
+  Vector b(0, 1, 0);
+  // Both have length 1, so should be equivalent in ordering
+  EXPECT_TRUE((a <=> b) == 0);
+}
+
+TEST(VectorTest, SpaceshipOperatorLess) {
+  Vector shorter(1, 0, 0); // length 1
+  Vector longer(3, 4, 0);  // length 5
+  EXPECT_TRUE(shorter < longer);
+  EXPECT_FALSE(longer < shorter);
+}
+
+TEST(VectorTest, EqualityOperator) {
+  Vector a(1, 2, 3);
+  Vector b(1, 2, 3);
+  Vector c(1, 2, 4);
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a == c);
+}
+
+// Scalar left multiplication
+TEST(VectorTest, ScalarLeftMultiplication) {
+  Vector v(1, 2, 3);
+  Vector result = 2.0 * v;
+  EXPECT_DOUBLE_EQ(result.getX(), 2.0);
+  EXPECT_DOUBLE_EQ(result.getY(), 4.0);
+  EXPECT_DOUBLE_EQ(result.getZ(), 6.0);
+}
+
+// Copy and Move semantics
+TEST(VectorTest, CopyConstructor) {
+  Vector a(1, 2, 3);
+  Vector b(a);
+  EXPECT_DOUBLE_EQ(b.getX(), 1.0);
+  EXPECT_DOUBLE_EQ(b.getY(), 2.0);
+  EXPECT_DOUBLE_EQ(b.getZ(), 3.0);
+}
+
+TEST(VectorTest, MoveConstructor) {
+  Vector a(1, 2, 3);
+  Vector b(std::move(a));
+  EXPECT_DOUBLE_EQ(b.getX(), 1.0);
+  EXPECT_DOUBLE_EQ(b.getY(), 2.0);
+  EXPECT_DOUBLE_EQ(b.getZ(), 3.0);
+}
+
+// Edge cases
+TEST(VectorTest, AngleWithZeroVector) {
+  Vector a(1, 0, 0);
+  Vector zero(0, 0, 0);
+  // Should return 0 when one vector is zero
+  EXPECT_DOUBLE_EQ(a.angleVectors(zero), 0.0);
+}
+
+TEST(VectorTest, SetLengthOnZeroVector) {
+  Vector v(0, 0, 0);
+  v.setVectorLength(5.0);
+  // Should remain zero (can't set length of zero vector)
+  EXPECT_DOUBLE_EQ(v.getLengthVector(), 0.0);
+}
+
+// Output stream operator
+TEST(VectorTest, OutputOperator) {
+  Vector v(1.5, 2.5, 3.5);
+  std::ostringstream oss;
+  oss << v;
+  EXPECT_EQ(oss.str(), "(1.5, 2.5, 3.5)");
 }

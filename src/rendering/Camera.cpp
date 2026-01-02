@@ -1,23 +1,30 @@
 /**
  * Camera.cpp - Camera positioning and tracking implementation
+ *
+ * Coordinate System: OpenGL/GLUT with Z-up
+ * - X: Forward/back direction
+ * - Y: Left/right (side) direction
+ * - Z: Up/down direction
  */
 
 #include "rendering/Camera.h"
 
 Camera::Camera() : Movable(), tracked(nullptr) {
+  // Initialize with Z-up coordinate system (consistent with rest of codebase)
   Movable::position = Vector(0, 0, 1);
   velocity = Vector(0, 0, -1);
-  dir = Vector(1, 0, 0);
-  up = Vector(0, 1, 0);
-  side = Vector(0, 0, 1);
+  dir = Vector(1, 0, 0);  // Forward is +X
+  up = Vector(0, 0, 1);   // Up is +Z (Z-up coordinate system)
+  side = Vector(0, 1, 0); // Side is +Y
 }
 
 Camera::Camera(Movable *track) : Movable(), tracked(track) {
+  // Initialize with Z-up coordinate system (consistent with rest of codebase)
   Movable::position = Vector(0, 0, 1);
   velocity = Vector(0, 0, -1);
-  dir = Vector(1, 0, 0);
-  up = Vector(0, 1, 0);
-  side = Vector(0, 0, 1);
+  dir = Vector(1, 0, 0);  // Forward is +X
+  up = Vector(0, 0, 1);   // Up is +Z (Z-up coordinate system)
+  side = Vector(0, 1, 0); // Side is +Y
 }
 
 void Camera::draw() {
@@ -37,7 +44,7 @@ void Camera::applyTransform() {
 }
 
 void Camera::iterate() {
-  double factor = 0.6;
+  constexpr double factor = 0.6;
 
   // Position camera behind and above the tracked object
   Vector trackedDir = tracked->getDir();
@@ -46,8 +53,9 @@ void Camera::iterate() {
   Vector trackedVel = tracked->getVelocity();
   trackedVel.setVectorLength(factor);
 
-  Movable::position =
-      tracked->getPosition() - trackedDir - trackedVel + Vector(0, 0, factor);
+  // Camera follows behind (-dir), offset by velocity, raised in Z (up)
+  Movable::position = tracked->getPosition() - trackedDir - trackedVel +
+                      Vector(0, 0, factor); // Z offset for height
 
   // Update camera orientation based on tracked object
   Vector newDir = tracked->getDir();
@@ -57,7 +65,7 @@ void Camera::iterate() {
   velContrib.setVectorLength(factor);
 
   dir = newDir + velContrib;
-  up = tracked->getUp();
+  up = tracked->getUp(); // Inherits Z-up from tracked object
   side = dir.crossProduct(up).setVectorLength(1.0);
 }
 

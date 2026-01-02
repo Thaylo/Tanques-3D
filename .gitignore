@@ -27,3 +27,4 @@ Testing/
 *.log
 compile_commands.json
 .cache/
+build_cov/
