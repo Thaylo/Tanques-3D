@@ -8,6 +8,7 @@
 #include "game/GameData.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 
 GameData::GameData() : player(nullptr), gameState(0), numEnemies(0) {
@@ -30,8 +31,10 @@ void GameData::initializeGame(int enemies) {
   std::generate_n(std::back_inserter(agents), enemies, [this]() {
     auto enemy = std::make_unique<Enemy>(player);
     enemy->setId(0);
-    enemy->setPosition(
-        Vector((rand() % 100) / 4.0 - 25.0, (rand() % 100) / 4.0 - 25.0, 0.0));
+    // Spawn enemies 50-150 meters from center (SI units)
+    double angle = (rand() % 360) * 3.14159 / 180.0;
+    double dist = 50.0 + (rand() % 100); // 50-150 meters
+    enemy->setPosition(Vector(dist * cos(angle), dist * sin(angle), 0.0));
     return enemy;
   });
 

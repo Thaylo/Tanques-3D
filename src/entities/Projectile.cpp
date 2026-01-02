@@ -29,7 +29,7 @@ Projectile::Projectile(Agent *shooter) : Agent(), distance(0) {
   initialPos = shooter->getPosition();
   position = shooter->getPosition();
   velocity = shooter->getDir();
-  velocity.setVectorLength(MOVABLE_MAX_VELOCITY * 3);
+  velocity.setVectorLength(PROJECTILE_SPEED); // Use projectile-specific speed
 
   dir = shooter->getDir();
   side = shooter->getSide();
@@ -43,12 +43,17 @@ void Projectile::draw() {
 }
 
 void Projectile::iterate() {
-  Agent::iterate();
-  velocity.setVectorLength(MOVABLE_MAX_VELOCITY);
+  // Set velocity BEFORE parent iterate() to bypass MOVABLE_MAX_VELOCITY
+  // clamping
+  velocity.setVectorLength(PROJECTILE_SPEED);
+
+  // Skip Agent behavior (no control, no enemy tracking)
+  // Just do basic Movable physics
+  Movable::iterate();
 
   const auto &agentsVec = gameData->getAgentsVector();
-  constexpr double collisionRadius = 0.5;
-  constexpr double maxTravelDistance = 40.0;
+  constexpr double collisionRadius = 4.0; // 4 meters (tank is ~8m long)
+  const double maxTravelDistance = PROJECTILE_MAX_DISTANCE;
 
   // Check collision with any agent
   std::for_each(agentsVec.begin(), agentsVec.end(), [this](const auto &agent) {

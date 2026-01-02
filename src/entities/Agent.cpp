@@ -104,7 +104,7 @@ void Agent::controlAction() {
 
   // Tank always moves in direction it's facing
   acceleration = newDir.setVectorLength(MOVABLE_MAX_ACCELERATION) * vert;
-  v_yaw = -hor;
+  v_yaw = -hor * TURN_RATE; // Use TURN_RATE constant
 }
 
 void Agent::shoot() {

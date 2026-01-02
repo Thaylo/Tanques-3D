@@ -897,8 +897,8 @@ void VulkanRenderer::beginFrame() {
   renderPassInfo.renderArea.extent = swapChainExtent;
 
   std::array<VkClearValue, 2> clearValues{};
-  clearValues[0].color = {{0.1f, 0.2f, 0.1f, 1.0f}}; // Dark green
-  clearValues[1].depthStencil = {1.0f, 0};           // Depth = 1.0 (far)
+  clearValues[0].color = {{0.4f, 0.6f, 0.85f, 1.0f}}; // Sky blue
+  clearValues[1].depthStencil = {1.0f, 0};            // Depth = 1.0 (far)
   renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
   renderPassInfo.pClearValues = clearValues.data();
 

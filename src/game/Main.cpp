@@ -30,10 +30,11 @@ static Vector camPos(0, 0, 10);
 static Vector camTarget(0, 0, 0);
 static Vector camUp(0, 0, 1);
 
-// Projection parameters
+// Projection parameters (SI: meters)
 constexpr float FOV = 60.0f * 3.14159f / 180.0f;
-constexpr float NEAR_PLANE = 0.1f;
-constexpr float FAR_PLANE = 100.0f;
+constexpr float NEAR_PLANE = 1.0f; // 1 meter near plane
+constexpr float FAR_PLANE =
+    500.0f; // 500 meters far plane (enemies spawn 50-150m)
 constexpr float ASPECT = 800.0f / 600.0f;
 
 // Build perspective projection matrix
@@ -114,23 +115,23 @@ void multiplyMatrices(float *result, const float *a, const float *b) {
   }
 }
 
-// Update camera to follow player (simplified, no velocity to avoid jitter)
+// Update camera to follow player (SI units: 1 unit = 1 meter)
 void updateCamera(GameData &game) {
   Agent *player = game.getPlayer();
   if (!player)
     return;
 
-  constexpr double distBehind = 5.0;
-  constexpr double height = 4.0;
+  // Camera positioned behind and above tank for good view
+  constexpr double distBehind = 25.0; // 25 meters behind
+  constexpr double height = 15.0;     // 15 meters high
 
   Vector trackedDir = player->getDir();
   trackedDir.setVectorLength(distBehind);
 
-  // Camera behind (-dir), raised in Z (height) - NO velocity offset
   camPos = player->getPosition() - trackedDir + Vector(0, 0, height);
-  camTarget = player->getPosition() + Vector(0, 0, 0.5); // Look at turret level
+  camTarget = player->getPosition() + Vector(0, 0, 1.0); // Look at turret level
   camUp = Vector(0, 0, 1);
-} // Z-up
+}
 
 // Draw a 3D box with direct vertex positions
 void drawBox(VulkanRenderer &r, const Vector &center, float halfW, float halfL,
@@ -166,7 +167,8 @@ void drawBox(VulkanRenderer &r, const Vector &center, float halfW, float halfL,
   r.drawQuad(ftr, btr, bbr, fbr, colR, colG - 0.1f, colB); // Right
 }
 
-// Draw a 3D tank
+// Draw a 3D tank (SI units: meters)
+// M1 Abrams-like: ~8m long, ~4m wide, ~2.5m tall
 void drawTank3D(VulkanRenderer &r, const Vector &pos, const Vector &dir,
                 const Vector &side, float bodyR, float bodyG, float bodyB) {
   float dx = static_cast<float>(dir.getX());
@@ -177,39 +179,76 @@ void drawTank3D(VulkanRenderer &r, const Vector &pos, const Vector &dir,
   float cx = static_cast<float>(pos.getX());
   float cy = static_cast<float>(pos.getY());
 
-  // Tank body
-  Vector bodyCenter(cx, cy, 0.25);
-  drawBox(r, bodyCenter, 0.6f, 1.0f, 0.25f, dx, dy, sx, sy, bodyR, bodyG,
+  // Tank body: 8m long x 4m wide x 1.5m tall (halfL=4, halfW=2, halfH=0.75)
+  Vector bodyCenter(cx, cy, 0.75f);
+  drawBox(r, bodyCenter, 2.0f, 4.0f, 0.75f, dx, dy, sx, sy, bodyR, bodyG,
           bodyB);
 
-  // Turret
-  Vector turretCenter(cx, cy, 0.6);
-  drawBox(r, turretCenter, 0.4f, 0.4f, 0.15f, dx, dy, sx, sy, bodyR * 0.8f,
+  // Turret: 3m diameter x 1m tall, on top of body
+  Vector turretCenter(cx, cy, 2.0f);
+  drawBox(r, turretCenter, 1.5f, 1.5f, 0.5f, dx, dy, sx, sy, bodyR * 0.8f,
           bodyG * 0.8f, bodyB * 0.8f);
 
-  // Cannon
-  float cannonCx = cx + dx * 1.2f;
-  float cannonCy = cy + dy * 1.2f;
-  Vector cannonCenter(cannonCx, cannonCy, 0.6);
-  drawBox(r, cannonCenter, 0.08f, 0.6f, 0.08f, dx, dy, sx, sy, 0.3f, 0.3f,
-          0.3f);
+  // Cannon: 5m long x 0.3m diameter, extending forward from turret
+  float cannonCx = cx + dx * 4.5f;
+  float cannonCy = cy + dy * 4.5f;
+  Vector cannonCenter(cannonCx, cannonCy, 2.0f);
+  drawBox(r, cannonCenter, 0.15f, 2.5f, 0.15f, dx, dy, sx, sy, 0.25f, 0.25f,
+          0.25f);
 }
 
-// Draw projectile
+// Draw projectile - tank shell ~0.5m
 void drawProjectile(VulkanRenderer &r, const Vector &pos, float colR,
                     float colG, float colB) {
   Vector center(static_cast<float>(pos.getX()), static_cast<float>(pos.getY()),
-                0.5f);
-  drawBox(r, center, 0.15f, 0.15f, 0.15f, 1, 0, 0, 1, colR, colG, colB);
+                2.0f);
+  // Shell: 0.5m long projectile, bright orange
+  drawBox(r, center, 0.15f, 0.3f, 0.15f, 1, 0, 0, 1, 1.0f, 0.6f, 0.1f);
 }
 
-// Draw ground plane
+// Draw ground with checkerboard pattern for movement perception
 void drawGround(VulkanRenderer &r) {
-  Vector p1(-30, -30, -0.05);
-  Vector p2(30, -30, -0.05);
-  Vector p3(30, 30, -0.05);
-  Vector p4(-30, 30, -0.05);
-  r.drawQuad(p1, p2, p3, p4, 0.2f, 0.35f, 0.15f);
+  constexpr float gridSize = 20.0f; // 20m grid squares
+  constexpr int numTiles = 25;      // 25 tiles each direction = 500m total
+
+  for (int i = -numTiles; i < numTiles; i++) {
+    for (int j = -numTiles; j < numTiles; j++) {
+      float x1 = i * gridSize;
+      float y1 = j * gridSize;
+      float x2 = x1 + gridSize;
+      float y2 = y1 + gridSize;
+
+      // Checkerboard pattern: alternate colors
+      bool isLight = ((i + j) % 2) == 0;
+      float r_col = isLight ? 0.35f : 0.25f;
+      float g_col = isLight ? 0.55f : 0.45f;
+      float b_col = isLight ? 0.30f : 0.20f;
+
+      Vector p1(x1, y1, -0.1);
+      Vector p2(x2, y1, -0.1);
+      Vector p3(x2, y2, -0.1);
+      Vector p4(x1, y2, -0.1);
+      r.drawQuad(p1, p2, p3, p4, r_col, g_col, b_col);
+    }
+  }
+}
+
+// Draw sky with horizon gradient effect
+void drawSky(VulkanRenderer &r) {
+  // Sky backdrop - large quad at horizon
+  // Upper sky (lighter blue)
+  Vector s1(-1000, 600, 50);
+  Vector s2(1000, 600, 50);
+  Vector s3(1000, 600, 200);
+  Vector s4(-1000, 600, 200);
+  r.drawQuad(s1, s2, s3, s4, 0.5f, 0.7f, 0.95f);
+
+  // Horizon haze (lighter, fog-like)
+  Vector h1(-1000, 600, -10);
+  Vector h2(1000, 600, -10);
+  Vector h3(1000, 600, 50);
+  Vector h4(-1000, 600, 50);
+  r.drawQuad(h1, h2, h3, h4, 0.7f, 0.8f, 0.9f);
 }
 
 // Render all game entities
@@ -225,6 +264,9 @@ void drawGame(VulkanRenderer &r, GameData &game) {
 
   // Set MVP matrix in renderer
   r.setMVPMatrix(vp);
+
+  // Draw sky first (furthest back)
+  drawSky(r);
 
   // Draw ground
   drawGround(r);
