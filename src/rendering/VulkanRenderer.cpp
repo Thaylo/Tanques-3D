@@ -575,11 +575,87 @@ bool VulkanRenderer::createVertexBuffer() {
 void VulkanRenderer::beginFrame() {
   vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE,
                   UINT64_MAX);
+
+  VkResult result = vkAcquireNextImageKHR(
+      device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
+      VK_NULL_HANDLE, &currentImageIndex);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    // Swapchain needs recreation (window resize)
+    return;
+  }
+
+  vkResetFences(device, 1, &inFlightFences[currentFrame]);
+  vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+
+  // Begin command buffer
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  vkBeginCommandBuffer(commandBuffers[currentFrame], &beginInfo);
+
+  // Begin render pass with dark green clear color (forest battlefield)
+  VkRenderPassBeginInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  renderPassInfo.renderPass = renderPass;
+  renderPassInfo.framebuffer = swapChainFramebuffers[currentImageIndex];
+  renderPassInfo.renderArea.offset = {0, 0};
+  renderPassInfo.renderArea.extent = swapChainExtent;
+
+  VkClearValue clearColor = {{{0.1f, 0.2f, 0.1f, 1.0f}}}; // Dark green
+  renderPassInfo.clearValueCount = 1;
+  renderPassInfo.pClearValues = &clearColor;
+
+  vkCmdBeginRenderPass(commandBuffers[currentFrame], &renderPassInfo,
+                       VK_SUBPASS_CONTENTS_INLINE);
+
   vertices.clear();
 }
 
 void VulkanRenderer::endFrame() {
-  // Present frame (simplified - full implementation in Phase 3)
+  // End render pass
+  vkCmdEndRenderPass(commandBuffers[currentFrame]);
+
+  if (vkEndCommandBuffer(commandBuffers[currentFrame]) != VK_SUCCESS) {
+    std::cerr << "Failed to record command buffer!" << std::endl;
+    return;
+  }
+
+  // Submit command buffer
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+  VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+  VkPipelineStageFlags waitStages[] = {
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = waitSemaphores;
+  submitInfo.pWaitDstStageMask = waitStages;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+
+  VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = signalSemaphores;
+
+  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo,
+                    inFlightFences[currentFrame]) != VK_SUCCESS) {
+    std::cerr << "Failed to submit draw command buffer!" << std::endl;
+    return;
+  }
+
+  // Present
+  VkPresentInfoKHR presentInfo{};
+  presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+  presentInfo.waitSemaphoreCount = 1;
+  presentInfo.pWaitSemaphores = signalSemaphores;
+
+  VkSwapchainKHR swapChains[] = {swapChain};
+  presentInfo.swapchainCount = 1;
+  presentInfo.pSwapchains = swapChains;
+  presentInfo.pImageIndices = &currentImageIndex;
+
+  vkQueuePresentKHR(presentQueue, &presentInfo);
+
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
