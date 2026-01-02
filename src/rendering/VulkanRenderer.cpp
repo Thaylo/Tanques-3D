@@ -745,7 +745,6 @@ void VulkanRenderer::beginFrame() {
       VK_NULL_HANDLE, &currentImageIndex);
 
   if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-    // Swapchain needs recreation (window resize)
     return;
   }
 
@@ -757,7 +756,7 @@ void VulkanRenderer::beginFrame() {
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   vkBeginCommandBuffer(commandBuffers[currentFrame], &beginInfo);
 
-  // Begin render pass with dark green clear color (forest battlefield)
+  // Begin render pass with dark green clear color
   VkRenderPassBeginInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   renderPassInfo.renderPass = renderPass;
@@ -765,17 +764,91 @@ void VulkanRenderer::beginFrame() {
   renderPassInfo.renderArea.offset = {0, 0};
   renderPassInfo.renderArea.extent = swapChainExtent;
 
-  VkClearValue clearColor = {{{0.1f, 0.2f, 0.1f, 1.0f}}}; // Dark green
+  VkClearValue clearColor = {{{0.1f, 0.2f, 0.1f, 1.0f}}};
   renderPassInfo.clearValueCount = 1;
   renderPassInfo.pClearValues = &clearColor;
 
   vkCmdBeginRenderPass(commandBuffers[currentFrame], &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
+  // Bind graphics pipeline
+  vkCmdBindPipeline(commandBuffers[currentFrame],
+                    VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+  // Set dynamic viewport
+  VkViewport viewport{};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = static_cast<float>(swapChainExtent.width);
+  viewport.height = static_cast<float>(swapChainExtent.height);
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+  vkCmdSetViewport(commandBuffers[currentFrame], 0, 1, &viewport);
+
+  // Set dynamic scissor
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent = swapChainExtent;
+  vkCmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
+
+  // Push identity MVP matrix for now
+  float mvp[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout,
+                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
+
   vertices.clear();
+
+  // Add a test triangle (red) centered on screen
+  vertices.push_back({{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}});
+  vertices.push_back({{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0, 0}});
+  vertices.push_back({{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0, 0}});
 }
 
 void VulkanRenderer::endFrame() {
+  // Draw vertices if we have any
+  if (!vertices.empty() && graphicsPipeline != VK_NULL_HANDLE) {
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+
+    // Create or recreate vertex buffer if needed
+    if (vertexBuffer == VK_NULL_HANDLE) {
+      VkBufferCreateInfo bufferInfo{};
+      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bufferInfo.size = bufferSize;
+      bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer);
+
+      VkMemoryRequirements memRequirements;
+      vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+      VkMemoryAllocateInfo allocInfo{};
+      allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+      allocInfo.allocationSize = memRequirements.size;
+      allocInfo.memoryTypeIndex =
+          findMemoryType(memRequirements.memoryTypeBits,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+      vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory);
+      vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+    }
+
+    // Copy vertex data to buffer
+    void *data;
+    vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), bufferSize);
+    vkUnmapMemory(device, vertexBufferMemory);
+
+    // Bind vertex buffer and draw
+    VkBuffer buffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, buffers,
+                           offsets);
+    vkCmdDraw(commandBuffers[currentFrame],
+              static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+  }
+
   // End render pass
   vkCmdEndRenderPass(commandBuffers[currentFrame]);
 
@@ -931,6 +1004,22 @@ VulkanRenderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
                  capabilities.maxImageExtent.height);
 
   return actualExtent;
+}
+
+uint32_t VulkanRenderer::findMemoryType(uint32_t typeFilter,
+                                        VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
+                                    properties) == properties) {
+      return i;
+    }
+  }
+
+  std::cerr << "Failed to find suitable memory type!" << std::endl;
+  return 0;
 }
 
 bool VulkanRenderer::checkValidationLayerSupport() {
