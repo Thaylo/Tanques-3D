@@ -925,19 +925,21 @@ void VulkanRenderer::beginFrame() {
   scissor.extent = swapChainExtent;
   vkCmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
 
-  // Push MVP matrix (set by setMVPMatrix or identity by default)
-  vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout,
-                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvpMatrix),
-                     mvpMatrix);
-
   vertices.clear();
   // Entities added via drawTriangle/drawQuad calls between beginFrame/endFrame
+  // MVP push constants moved to endFrame to ensure camera is updated first
 }
 
 void VulkanRenderer::endFrame() {
   // Draw vertices if we have any
   if (!vertices.empty() && graphicsPipeline != VK_NULL_HANDLE &&
       vertexBuffer != VK_NULL_HANDLE) {
+
+    // Push MVP matrix NOW - after camera has been updated by drawGame
+    vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvpMatrix),
+                       mvpMatrix);
+
     VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
 
     // Copy vertex data to pre-allocated buffer

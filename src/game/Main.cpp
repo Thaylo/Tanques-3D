@@ -10,7 +10,6 @@
 #include <iostream>
 #include <memory>
 
-
 #include "core/Constants.h"
 #include "core/Timer.h"
 #include "core/Vector.h"
@@ -19,7 +18,6 @@
 #include "game/GameData.h"
 #include "rendering/VulkanRenderer.h"
 #include "rendering/VulkanWindow.h"
-
 
 static std::unique_ptr<GameData> gameDataPtr;
 GameData *gameData = nullptr;
@@ -116,26 +114,23 @@ void multiplyMatrices(float *result, const float *a, const float *b) {
   }
 }
 
-// Update camera to follow player (like original Camera::iterate)
+// Update camera to follow player (simplified, no velocity to avoid jitter)
 void updateCamera(GameData &game) {
   Agent *player = game.getPlayer();
   if (!player)
     return;
 
-  constexpr double factor = 5.0; // Distance behind player
+  constexpr double distBehind = 5.0;
+  constexpr double height = 4.0;
 
   Vector trackedDir = player->getDir();
-  trackedDir.setVectorLength(factor);
+  trackedDir.setVectorLength(distBehind);
 
-  Vector trackedVel = player->getVelocity();
-  trackedVel.setVectorLength(factor * 0.5);
-
-  // Camera behind (-dir), offset by velocity, raised in Z (height)
-  camPos = player->getPosition() - trackedDir - trackedVel +
-           Vector(0, 0, factor * 0.8);
-  camTarget = player->getPosition();
-  camUp = Vector(0, 0, 1); // Z-up
-}
+  // Camera behind (-dir), raised in Z (height) - NO velocity offset
+  camPos = player->getPosition() - trackedDir + Vector(0, 0, height);
+  camTarget = player->getPosition() + Vector(0, 0, 0.5); // Look at turret level
+  camUp = Vector(0, 0, 1);
+} // Z-up
 
 // Draw a 3D box with direct vertex positions
 void drawBox(VulkanRenderer &r, const Vector &center, float halfW, float halfL,
