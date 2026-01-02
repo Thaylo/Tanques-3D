@@ -3,6 +3,8 @@
  *
  * Created: 15/10/2012
  * Author: thaylo
+ *
+ * Renderer-agnostic: draw() is a stub for future Vulkan implementation.
  */
 
 #ifndef AGENT_H
@@ -12,10 +14,6 @@
 #include "entities/Matter.h"
 #include "entities/Movable.h"
 #include "rendering/Drawable.h"
-#include "rendering/GLDraw.h"
-
-// Tank textures (loaded externally)
-extern GLuint tankTextures[5];
 
 /**
  * Tank agent entity that can be controlled and rendered.
@@ -39,7 +37,7 @@ public:
   void setId(int idx);
   int getId();
 
-  // Rendering
+  // Rendering (stub - Vulkan implementation pending)
   void draw() override;
   void drawRadar();
 
@@ -55,8 +53,10 @@ public:
   void markForDestruction();
   bool isMarkedForDestruction();
 
-protected:
-  void glVectorT(const Vector &v);
+  // Accessors for rendering
+  [[nodiscard]] const Vector &getDir() const { return dir; }
+  [[nodiscard]] const Vector &getUp() const { return up; }
+  [[nodiscard]] const Vector &getSide() const { return side; }
 };
 
 #endif // AGENT_H

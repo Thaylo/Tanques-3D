@@ -1,132 +1,81 @@
 /**
- * Main.cpp - Game entry point
+ * Main.cpp - Tanques3D game entry point
  *
- * Tanques 3D - A tank battle game
- * Uses GLUT callback-driven architecture for macOS compatibility
+ * Vulkan/SDL2 renderer with Metal backend via MoltenVK on macOS.
  */
 
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+
+#include "core/Constants.h"
 #include "core/Timer.h"
+#include "core/Vector.h"
+#include "game/Control.h"
 #include "game/GameData.h"
-#include "rendering/Camera.h"
-#include "rendering/GLDraw.h"
-#include "rendering/Window.h"
+#include "rendering/VulkanRenderer.h"
+#include "rendering/VulkanWindow.h"
 
-// Globals
-GameData* gameData = nullptr;
-int level = 3;
-long lastTime = 0;
+static std::unique_ptr<GameData> gameDataPtr;
+GameData *gameData = nullptr; // Global raw pointer for Agent/Projectile access
+static std::unique_ptr<VulkanRenderer> renderer;
+static Control control;
+static long lastIterationTime = 0;
 
-/**
- * DRY helper: Sets control key state based on key code.
- */
-void setControlKey(Control* control, int code, bool pressed) {
-    switch (code) {
-        case TURBINE_INC:  control->power_inc = pressed; break;
-        case TURBINE_DEC:  control->power_dec = pressed; break;
-        case ARROW_UP:     control->arrowUp = pressed; break;
-        case ARROW_DOWN:   control->arrowDown = pressed; break;
-        case ARROW_RIGHT:  control->arrowRight = pressed; break;
-        case ARROW_LEFT:   control->arrowLeft = pressed; break;
-        case KEY_ESC:      control->keyEsc = pressed; break;
-        case KEY_SPACE:    control->space = pressed; break;
+int main(int argc, char *argv[]) {
+  int numEnemies = 3;
+  if (argc > 1) {
+    numEnemies = std::atoi(argv[1]);
+  }
+
+  std::cout << "Tanques3D v2.0 (Vulkan/Metal renderer)" << std::endl;
+  std::cout << "Starting with " << numEnemies << " enemies" << std::endl;
+
+  // Initialize Vulkan renderer
+  renderer = std::make_unique<VulkanRenderer>();
+  if (!renderer->initialize("Tanques3D", 800, 600)) {
+    std::cerr << "Failed to initialize Vulkan renderer!" << std::endl;
+    return 1;
+  }
+
+  // Initialize game data
+  gameDataPtr = std::make_unique<GameData>();
+  gameData = gameDataPtr.get(); // Set global raw pointer
+  gameData->initializeGame(numEnemies);
+  control = initializeControl();
+
+  lastIterationTime = getCurrentTime();
+
+  std::cout << "Starting game loop..." << std::endl;
+
+  // Main game loop
+  while (renderer->isRunning()) {
+    // Process input
+    bool running = true;
+    VulkanWindow::processEvents(control, running);
+    if (!running || control.keyEsc) {
+      renderer->setRunning(false);
+      break;
     }
-}
 
-// GLUT Callbacks
-void displayCallback() {
-    if (gameData) {
-        gameData->drawGame();
-    }
-    glutSwapBuffers();
-}
-
-void idleCallback() {
+    // Update game logic at fixed timestep
     long currentTime = getCurrentTime();
-    
-    if (currentTime - lastTime > TIME_STEP) {
-        lastTime += TIME_STEP;
-        
-        if (gameData) {
-            if (gameData->getControl()->keyEsc) {
-                exit(0);
-            }
-            gameData->iterateGameData();
-        }
-    }
-    
-    glutPostRedisplay();
-}
+    if (currentTime - lastIterationTime >= TIME_STEP) {
+      gameData->setControl(control);
+      gameData->iterateGameData();
+      lastIterationTime = currentTime;
 
-void mouseCallback(int button, int state, int x, int y) {
-    printf("mouse - button: %d, state: %d, x: %d, y: %d\n", button, state, x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y) {
-    printf("key: %d, type: press\n", key);
-    if (gameData) {
-        setControlKey(gameData->getControl(), key, true);
-    }
-}
-
-void keyboardUpCallback(unsigned char key, int x, int y) {
-    printf("key: %d, type: release\n", key);
-    if (gameData) {
-        setControlKey(gameData->getControl(), key, false);
-    }
-}
-
-void specialCallback(int key, int x, int y) {
-    printf("special key: %d, type: press\n", key);
-    if (gameData) {
-        setControlKey(gameData->getControl(), key, true);
-    }
-}
-
-void specialUpCallback(int key, int x, int y) {
-    printf("special key: %d, type: release\n", key);
-    if (gameData) {
-        setControlKey(gameData->getControl(), key, false);
-    }
-}
-
-int main(int argc, char** argv) {
-    // Initialize GLUT
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-    glutInitWindowSize(800, 800);
-    glutInitWindowPosition(100, 100);
-    glutCreateWindow("Tanques 3D");
-
-    // Parse command line
-    if (argc >= 2) {
-        level = atoi(argv[1]);
-    } else {
-        printf("You can specify the number of opponents when starting, for example:\n"
-               "\"./Tanques3D 15\"\n");
+      // Reset one-shot inputs
+      control.newLeftPressed = false;
+      control.newRightPressed = false;
     }
 
-    // Initialize OpenGL and game
-    initGl();
-    gameData = new GameData();
-    lastTime = getCurrentTime();
+    // Render frame
+    renderer->beginFrame();
+    // TODO: Draw game entities
+    renderer->endFrame();
+  }
 
-    // Register GLUT callbacks
-    glutDisplayFunc(displayCallback);
-    glutIdleFunc(idleCallback);
-    glutMouseFunc(mouseCallback);
-    glutKeyboardFunc(keyboardCallback);
-    glutKeyboardUpFunc(keyboardUpCallback);
-    glutSpecialFunc(specialCallback);
-    glutSpecialUpFunc(specialUpCallback);
-
-    printf("Starting game with %d enemies...\n", level);
-    printf("Controls: Arrow keys to move, Space to fire, ESC to quit\n");
-
-    // Enter GLUT main loop (this is blocking but handles the window properly)
-    glutMainLoop();
-
-    // Cleanup (won't reach here normally as glutMainLoop doesn't return)
-    delete gameData;
-
-    return 0;
+  std::cout << "Game ended" << std::endl;
+  return 0;
 }

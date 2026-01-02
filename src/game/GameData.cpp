@@ -2,6 +2,7 @@
  * GameData.cpp - Game state management implementation
  *
  * Uses modern C++ features: unique_ptr, vector, STL algorithms
+ * Renderer-agnostic: no OpenGL/Vulkan dependencies
  */
 
 #include "game/GameData.h"
@@ -9,36 +10,35 @@
 #include <algorithm>
 #include <iostream>
 
-// Level is set from command line
-extern int level;
-
-GameData::GameData() : player(nullptr), gameState(0) {
+GameData::GameData() : player(nullptr), gameState(0), numEnemies(0) {
   control = initializeControl();
+}
 
-  insertPlayer();
+void GameData::initializeGame(int enemies) {
+  numEnemies = enemies;
+
+  // Insert player
+  auto playerAgent = std::make_unique<Agent>(Vector(0, 0, 0.0));
+  playerAgent->setController(&control);
+  playerAgent->setId(PLAYER_ID);
+  player = playerAgent.get();
+  agents.push_back(std::move(playerAgent));
 
   // Spawn enemies using generate_n pattern
-  agents.reserve(level + 10); // Pre-allocate for efficiency
+  agents.reserve(enemies + 10);
 
-  std::generate_n(std::back_inserter(agents), level, [this]() {
+  std::generate_n(std::back_inserter(agents), enemies, [this]() {
     auto enemy = std::make_unique<Enemy>(player);
     enemy->setId(0);
     enemy->setPosition(
         Vector((rand() % 100) / 4.0 - 25.0, (rand() % 100) / 4.0 - 25.0, 0.0));
     return enemy;
   });
+
+  std::cout << "Game initialized with " << enemies << " enemies" << std::endl;
 }
 
-void GameData::insertPlayer() {
-  auto playerAgent = std::make_unique<Agent>(Vector(0, 0, 0.0));
-  playerAgent->setController(&control);
-  playerAgent->setId(PLAYER_ID);
-  player = playerAgent.get(); // Store raw pointer before moving
-  agents.push_back(std::move(playerAgent));
-
-  camera = std::make_unique<Camera>(player);
-  ground = std::make_unique<Ground>(player);
-}
+void GameData::setControl(const Control &ctrl) { control = ctrl; }
 
 Control *GameData::getControl() { return &control; }
 
@@ -54,11 +54,7 @@ std::vector<Agent *> GameData::getAgentPointers() const {
 }
 
 void GameData::iterateGameData() {
-  ground->iterate();
-  camera->iterate();
-
-  // Collect new projectiles to add after iteration (avoid modifying during
-  // iteration)
+  // Collect new projectiles to add after iteration
   std::vector<std::unique_ptr<Agent>> newProjectiles;
 
   // Iterate all agents
@@ -81,7 +77,6 @@ void GameData::iterateGameData() {
   auto playerDied =
       std::any_of(agents.begin(), agents.end(), [](const auto &agent) {
         if (agent->isMarkedForDestruction() && agent->getId() == PLAYER_ID) {
-          // Check if it's not a projectile
           return dynamic_cast<Projectile *>(agent.get()) == nullptr;
         }
         return false;
@@ -89,6 +84,7 @@ void GameData::iterateGameData() {
 
   if (playerDied) {
     std::cout << "Game Over: LOSER!" << std::endl;
+    gameState = -1; // Loss state
     getControl()->keyEsc = true;
   }
 
@@ -99,36 +95,15 @@ void GameData::iterateGameData() {
                               }),
                agents.end());
 
-  // Check win condition: only player remains
-  bool playerOnly =
-      agents.size() == 1 &&
-      std::all_of(agents.begin(), agents.end(), [](const auto &agent) {
-        return agent->getId() == PLAYER_ID &&
-               dynamic_cast<Projectile *>(agent.get()) == nullptr;
+  // Check win condition: only player remains (no enemies, ignore projectiles)
+  size_t nonProjectileCount =
+      std::count_if(agents.begin(), agents.end(), [](const auto &agent) {
+        return dynamic_cast<Projectile *>(agent.get()) == nullptr;
       });
 
-  if (playerOnly) {
+  if (nonProjectileCount == 1 && player != nullptr) {
     std::cout << "Game Over: WINNER!" << std::endl;
+    gameState = 1; // Win state
     getControl()->keyEsc = true;
   }
-}
-
-void GameData::drawGame() {
-  glClearColor(0, 0, 0, 0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glPushMatrix();
-
-  // Position camera
-  camera->applyTransform();
-
-  // Draw world
-  ground->draw();
-
-  // Draw all agents using range-based for
-  for (const auto &agent : agents) {
-    agent->draw();
-  }
-
-  glPopMatrix();
 }

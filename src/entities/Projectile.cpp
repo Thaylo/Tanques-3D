@@ -1,10 +1,11 @@
 /**
- * Projectile.cpp - Projectile entity implementation (formerly Projetil)
+ * Projectile.cpp - Projectile entity implementation
  *
  * Created: 18/04/2013
  * Author: thaylo
  *
  * Uses modern C++ features: range-based for, auto, algorithms
+ * Renderer-agnostic: draw() stubbed for Vulkan implementation.
  */
 
 #include "entities/Projectile.h"
@@ -17,7 +18,6 @@ extern GameData *gameData;
 Projectile::Projectile() : Agent(), distance(0) {
   initialPos = position;
   position = Vector(0, 0, 0);
-  // Prevents camera initialization issue (workaround)
   velocity = Vector(0.0001, 0, 0);
   dir = Vector(1, 0, 0);
   side = Vector(0, 1, 0);
@@ -38,37 +38,8 @@ Projectile::Projectile(Agent *shooter) : Agent(), distance(0) {
 }
 
 void Projectile::draw() {
-  glColor3f(1, 0, 0);
-  glTranslated(position.getX(), position.getY(), position.getZ());
-
-  constexpr double size = 1 / 5.0;
-
-  // Draw projectile as a set of triangles forming a pointed shape
-  glBegin(GL_TRIANGLES);
-  glVectorT(dir * 2 * size);
-  glVectorT(side * (-size / 2) - up * (size / 5));
-  glVectorT(side * (size / 2) - up * (size / 5));
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  glVectorT(dir * 2 * size);
-  glVectorT(side * (-size / 2) + up * (size / 5));
-  glVectorT(side * (size / 2) + up * (size / 5));
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  glVectorT(dir * 2 * size);
-  glVectorT(side * (-size / 2) + up * (size / 5));
-  glVectorT(side * (-size / 2) - up * (size / 5));
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  glVectorT(dir * 2 * size);
-  glVectorT(side * (size / 2) + up * (size / 5));
-  glVectorT(side * (size / 2) - up * (size / 5));
-  glEnd();
-
-  glTranslated(-position.getX(), -position.getY(), -position.getZ());
+  // TODO: Vulkan rendering implementation
+  // Projectile rendered as pointed triangular shape
 }
 
 void Projectile::iterate() {
@@ -79,7 +50,7 @@ void Projectile::iterate() {
   constexpr double collisionRadius = 0.5;
   constexpr double maxTravelDistance = 40.0;
 
-  // Check collision with any agent using STL algorithm
+  // Check collision with any agent
   std::for_each(agentsVec.begin(), agentsVec.end(), [this](const auto &agent) {
     double dist = (agent->getPosition() - position).getLengthVector();
 

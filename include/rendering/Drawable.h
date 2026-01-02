@@ -1,16 +1,19 @@
 /**
- * Drawable.h - Interface for renderable objects
+ * Drawable.h - Base class for renderable entities
+ *
+ * Renderer-agnostic interface - draw() implemented by derived classes.
  */
 
 #ifndef DRAWABLE_H
 #define DRAWABLE_H
 
 /**
- * Abstract interface for objects that can be drawn/rendered.
+ * Interface for drawable entities.
+ * All drawable objects must implement draw().
  */
 class Drawable {
 public:
-  virtual ~Drawable() {}
+  virtual ~Drawable() = default;
   virtual void draw() = 0;
 };
 

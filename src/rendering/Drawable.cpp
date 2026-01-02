@@ -1,7 +1,7 @@
 /**
- * Drawable.cpp - Interface for renderable objects implementation
+ * Drawable.cpp - Drawable interface implementation
  */
 
 #include "rendering/Drawable.h"
 
-// Pure interface - no implementation needed
+// Virtual destructor defined in header as default
