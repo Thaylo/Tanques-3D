@@ -3,6 +3,8 @@
  *
  * Created: 14/10/2012
  * Author: thaylo
+ *
+ * C++23 modernization: constexpr, nodiscard, noexcept
  */
 
 #ifndef MOVABLE_H
@@ -17,52 +19,71 @@
  */
 class Movable {
 protected:
-  Vector position;
-  Vector velocity;
-  Vector acceleration;
+  Vector position{};
+  Vector velocity{};
+  Vector acceleration{};
 
   // Orientation vectors
-  Vector up;
-  Vector dir;  // Forward direction
-  Vector side; // Right side direction
+  Vector up{0, 0, 1};
+  Vector dir{1, 0, 0};  // Forward direction
+  Vector side{0, 1, 0}; // Right side direction
 
   // Euler angles (radians)
-  // See: http://www.toymaker.info/Games/assets/images/yawpitchroll.jpg
-  double roll, pitch, yaw;
-  double v_roll, v_pitch, v_yaw; // Angular velocities
+  double roll{0}, pitch{0}, yaw{0};
+  double v_roll{0}, v_pitch{0}, v_yaw{0}; // Angular velocities
 
 public:
-  Movable();
-  explicit Movable(const Vector &positionv);
-  virtual ~Movable() {}
+  constexpr Movable() noexcept = default;
+
+  explicit constexpr Movable(const Vector &positionv) noexcept
+      : position(positionv) {}
+
+  virtual ~Movable() = default;
+
+  // Rule of five with defaults
+  constexpr Movable(const Movable &) = default;
+  constexpr Movable(Movable &&) noexcept = default;
+  Movable &operator=(const Movable &) = default;
+  Movable &operator=(Movable &&) noexcept = default;
 
   virtual void iterate();
 
-  // Position getters/setters
-  Vector getPosition() const;
-  Vector getVelocity() const;
-  Vector getAcceleration() const;
-  void setPosition(const Vector &pos);
-  void setVelocity(const Vector &vel);
-  void setAcceleration(const Vector &accel);
+  // Position accessors
+  [[nodiscard]] constexpr Vector getPosition() const noexcept {
+    return position;
+  }
+  [[nodiscard]] constexpr Vector getVelocity() const noexcept {
+    return velocity;
+  }
+  [[nodiscard]] constexpr Vector getAcceleration() const noexcept {
+    return acceleration;
+  }
 
-  // Orientation getters/setters
-  Vector getUp() const;
-  Vector getDir() const;
-  Vector getSide() const;
-  void setUp(const Vector &upSet);
+  constexpr void setPosition(const Vector &pos) noexcept { position = pos; }
+  constexpr void setVelocity(const Vector &vel) noexcept { velocity = vel; }
+  constexpr void setAcceleration(const Vector &accel) noexcept {
+    acceleration = accel;
+  }
+
+  // Orientation accessors
+  [[nodiscard]] constexpr Vector getUp() const noexcept { return up; }
+  [[nodiscard]] constexpr Vector getDir() const noexcept { return dir; }
+  [[nodiscard]] constexpr Vector getSide() const noexcept { return side; }
+
+  constexpr void setUp(const Vector &upSet) noexcept { up = upSet; }
 
   // Euler angle controls
-  void setRoll(double rollRef);
-  void setPitch(double pitchRef);
-  void setYaw(double yawRef);
-  double getRoll() const;
-  double getPitch() const;
-  double getYaw() const;
+  constexpr void setRoll(double rollRef) noexcept { roll = rollRef; }
+  constexpr void setPitch(double pitchRef) noexcept { pitch = pitchRef; }
+  constexpr void setYaw(double yawRef) noexcept { yaw = yawRef; }
 
-  void setVRoll(double vrollRef);
-  void setVPitch(double vpitchRef);
-  void setVYaw(double vyawRef);
+  [[nodiscard]] constexpr double getRoll() const noexcept { return roll; }
+  [[nodiscard]] constexpr double getPitch() const noexcept { return pitch; }
+  [[nodiscard]] constexpr double getYaw() const noexcept { return yaw; }
+
+  constexpr void setVRoll(double vrollRef) noexcept { v_roll = vrollRef; }
+  constexpr void setVPitch(double vpitchRef) noexcept { v_pitch = vpitchRef; }
+  constexpr void setVYaw(double vyawRef) noexcept { v_yaw = vyawRef; }
 };
 
 #endif // MOVABLE_H
