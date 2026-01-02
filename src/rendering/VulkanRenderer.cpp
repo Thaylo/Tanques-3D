@@ -571,7 +571,7 @@ bool VulkanRenderer::createGraphicsPipeline() {
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
   rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizer.lineWidth = 1.0f;
-  rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizer.cullMode = VK_CULL_MODE_NONE; // Disable culling for debugging
   rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -732,7 +732,39 @@ bool VulkanRenderer::createSyncObjects() {
 }
 
 bool VulkanRenderer::createVertexBuffer() {
-  // Will be implemented when we add geometry
+  // Pre-allocate buffer for max vertices (10000 triangles = 30000 vertices)
+  VkDeviceSize bufferSize = sizeof(Vertex) * 30000;
+
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = bufferSize;
+  bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) !=
+      VK_SUCCESS) {
+    std::cerr << "Failed to create vertex buffer!" << std::endl;
+    return false;
+  }
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = findMemoryType(
+      memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) !=
+      VK_SUCCESS) {
+    std::cerr << "Failed to allocate vertex buffer memory!" << std::endl;
+    return false;
+  }
+
+  vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+  std::cout << "Vertex buffer created: " << bufferSize << " bytes" << std::endl;
   return true;
 }
 
@@ -806,35 +838,11 @@ void VulkanRenderer::beginFrame() {
 
 void VulkanRenderer::endFrame() {
   // Draw vertices if we have any
-  if (!vertices.empty() && graphicsPipeline != VK_NULL_HANDLE) {
+  if (!vertices.empty() && graphicsPipeline != VK_NULL_HANDLE &&
+      vertexBuffer != VK_NULL_HANDLE) {
     VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
 
-    // Create or recreate vertex buffer if needed
-    if (vertexBuffer == VK_NULL_HANDLE) {
-      VkBufferCreateInfo bufferInfo{};
-      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bufferInfo.size = bufferSize;
-      bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-      vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer);
-
-      VkMemoryRequirements memRequirements;
-      vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
-
-      VkMemoryAllocateInfo allocInfo{};
-      allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-      allocInfo.allocationSize = memRequirements.size;
-      allocInfo.memoryTypeIndex =
-          findMemoryType(memRequirements.memoryTypeBits,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-      vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory);
-      vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
-    }
-
-    // Copy vertex data to buffer
+    // Copy vertex data to pre-allocated buffer
     void *data;
     vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data);
     memcpy(data, vertices.data(), bufferSize);
