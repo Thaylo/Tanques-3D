@@ -1,7 +1,0 @@
-Instale o pacote freeglut3-dev
-
-Para compilar digite "make"
-
-Para executar digite "./jogoThaylo"
-
-Para escolher a quantidade de inimigos informe no comando "./jogoThaylo X"
