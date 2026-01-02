@@ -108,6 +108,12 @@ private:
   VkCommandPool commandPool{VK_NULL_HANDLE};
   std::vector<VkCommandBuffer> commandBuffers;
 
+  // Depth buffer for 3D rendering
+  VkImage depthImage{VK_NULL_HANDLE};
+  VkDeviceMemory depthImageMemory{VK_NULL_HANDLE};
+  VkImageView depthImageView{VK_NULL_HANDLE};
+  VkFormat depthFormat{VK_FORMAT_D32_SFLOAT};
+
   // Synchronization
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -142,6 +148,13 @@ private:
   bool createCommandBuffers();
   bool createSyncObjects();
   bool createVertexBuffer();
+  bool createDepthResources();
+  void createImage(uint32_t width, uint32_t height, VkFormat format,
+                   VkImageTiling tiling, VkImageUsageFlags usage,
+                   VkMemoryPropertyFlags properties, VkImage &image,
+                   VkDeviceMemory &imageMemory);
+  VkImageView createImageView(VkImage image, VkFormat format,
+                              VkImageAspectFlags aspectFlags);
 
   // Utility functions
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
