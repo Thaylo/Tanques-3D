@@ -152,6 +152,7 @@ private:
   chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &modes);
   VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
   VkShaderModule createShaderModule(const std::vector<char> &code);
+  std::vector<char> readFile(const std::string &filename);
   uint32_t findMemoryType(uint32_t typeFilter,
                           VkMemoryPropertyFlags properties);
   void updateVertexBuffer();
