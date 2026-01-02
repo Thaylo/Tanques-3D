@@ -2,6 +2,7 @@
  * Main.cpp - Tanques3D game entry point
  *
  * Vulkan/SDL2 renderer with Metal backend via MoltenVK on macOS.
+ * Camera logic inspired by original OpenGL Camera.cpp
  */
 
 #include <cmath>
@@ -13,10 +14,12 @@
 #include "core/Constants.h"
 #include "core/Timer.h"
 #include "core/Vector.h"
+#include "entities/Projectile.h"
 #include "game/Control.h"
 #include "game/GameData.h"
 #include "rendering/VulkanRenderer.h"
 #include "rendering/VulkanWindow.h"
+
 
 static std::unique_ptr<GameData> gameDataPtr;
 GameData *gameData = nullptr;
@@ -24,34 +27,142 @@ static std::unique_ptr<VulkanRenderer> renderer;
 static Control control;
 static long lastIterationTime = 0;
 
-// Draw a 3D box (6 faces) at the given position
-void drawBox(VulkanRenderer &r, float cx, float cy, float cz, float halfW,
-             float halfL, float halfH, float dx, float dy, float sx, float sy,
-             float colR, float colG, float colB) {
-  // Box corners relative to center, rotated by direction
-  // Front-back axis is direction, left-right is side
+// Camera state (follows player, positioned behind and above)
+static Vector camPos(0, 0, 10);
+static Vector camTarget(0, 0, 0);
+static Vector camUp(0, 0, 1);
 
-  // Calculate 8 corner positions
+// Projection parameters
+constexpr float FOV = 60.0f * 3.14159f / 180.0f;
+constexpr float NEAR_PLANE = 0.1f;
+constexpr float FAR_PLANE = 100.0f;
+constexpr float ASPECT = 800.0f / 600.0f;
+
+// Build perspective projection matrix
+void buildProjectionMatrix(float *m) {
+  float tanHalfFov = std::tan(FOV / 2.0f);
+  float f = 1.0f / tanHalfFov;
+  float nf = 1.0f / (NEAR_PLANE - FAR_PLANE);
+
+  m[0] = f / ASPECT;
+  m[1] = 0;
+  m[2] = 0;
+  m[3] = 0;
+  m[4] = 0;
+  m[5] = -f;
+  m[6] = 0;
+  m[7] = 0;
+  m[8] = 0;
+  m[9] = 0;
+  m[10] = (FAR_PLANE + NEAR_PLANE) * nf;
+  m[11] = -1;
+  m[12] = 0;
+  m[13] = 0;
+  m[14] = (2 * FAR_PLANE * NEAR_PLANE) * nf;
+  m[15] = 0;
+}
+
+// Build look-at view matrix (like gluLookAt)
+void buildViewMatrix(float *m, const Vector &eye, const Vector &target,
+                     const Vector &up) {
+  Vector f = target - eye;
+  f.setVectorLength(1.0);
+
+  Vector s = f.crossProduct(up);
+  s.setVectorLength(1.0);
+
+  Vector u = s.crossProduct(f);
+  u.setVectorLength(1.0);
+
+  float fx = static_cast<float>(f.getX());
+  float fy = static_cast<float>(f.getY());
+  float fz = static_cast<float>(f.getZ());
+  float sx = static_cast<float>(s.getX());
+  float sy = static_cast<float>(s.getY());
+  float sz = static_cast<float>(s.getZ());
+  float ux = static_cast<float>(u.getX());
+  float uy = static_cast<float>(u.getY());
+  float uz = static_cast<float>(u.getZ());
+  float ex = static_cast<float>(eye.getX());
+  float ey = static_cast<float>(eye.getY());
+  float ez = static_cast<float>(eye.getZ());
+
+  m[0] = sx;
+  m[1] = ux;
+  m[2] = -fx;
+  m[3] = 0;
+  m[4] = sy;
+  m[5] = uy;
+  m[6] = -fy;
+  m[7] = 0;
+  m[8] = sz;
+  m[9] = uz;
+  m[10] = -fz;
+  m[11] = 0;
+  m[12] = -(sx * ex + sy * ey + sz * ez);
+  m[13] = -(ux * ex + uy * ey + uz * ez);
+  m[14] = (fx * ex + fy * ey + fz * ez);
+  m[15] = 1;
+}
+
+// Multiply two 4x4 matrices: result = a * b
+void multiplyMatrices(float *result, const float *a, const float *b) {
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      result[i * 4 + j] =
+          a[0 * 4 + j] * b[i * 4 + 0] + a[1 * 4 + j] * b[i * 4 + 1] +
+          a[2 * 4 + j] * b[i * 4 + 2] + a[3 * 4 + j] * b[i * 4 + 3];
+    }
+  }
+}
+
+// Update camera to follow player (like original Camera::iterate)
+void updateCamera(GameData &game) {
+  Agent *player = game.getPlayer();
+  if (!player)
+    return;
+
+  constexpr double factor = 5.0; // Distance behind player
+
+  Vector trackedDir = player->getDir();
+  trackedDir.setVectorLength(factor);
+
+  Vector trackedVel = player->getVelocity();
+  trackedVel.setVectorLength(factor * 0.5);
+
+  // Camera behind (-dir), offset by velocity, raised in Z (height)
+  camPos = player->getPosition() - trackedDir - trackedVel +
+           Vector(0, 0, factor * 0.8);
+  camTarget = player->getPosition();
+  camUp = Vector(0, 0, 1); // Z-up
+}
+
+// Draw a 3D box with direct vertex positions
+void drawBox(VulkanRenderer &r, const Vector &center, float halfW, float halfL,
+             float halfH, float dx, float dy, float sx, float sy, float colR,
+             float colG, float colB) {
+  float cx = static_cast<float>(center.getX());
+  float cy = static_cast<float>(center.getY());
+  float cz = static_cast<float>(center.getZ());
+
   float frontX = cx + dx * halfL;
   float frontY = cy + dy * halfL;
   float backX = cx - dx * halfL;
   float backY = cy - dy * halfL;
 
-  // Top face (z + halfH)
+  // 8 corners in world space
   Vector ftl(frontX - sx * halfW, frontY - sy * halfW, cz + halfH);
   Vector ftr(frontX + sx * halfW, frontY + sy * halfW, cz + halfH);
   Vector btl(backX - sx * halfW, backY - sy * halfW, cz + halfH);
   Vector btr(backX + sx * halfW, backY + sy * halfW, cz + halfH);
-
-  // Bottom face (z - halfH)
   Vector fbl(frontX - sx * halfW, frontY - sy * halfW, cz - halfH);
   Vector fbr(frontX + sx * halfW, frontY + sy * halfW, cz - halfH);
   Vector bbl(backX - sx * halfW, backY - sy * halfW, cz - halfH);
   Vector bbr(backX + sx * halfW, backY + sy * halfW, cz - halfH);
 
-  // Draw 6 faces with slight color variation
+  // Draw faces
   r.drawQuad(ftl, ftr, btr, btl, colR + 0.1f, colG + 0.1f, colB + 0.1f); // Top
-  r.drawQuad(fbl, fbr, bbr, bbl, colR - 0.1f, colG - 0.1f,
+  r.drawQuad(fbl, bbl, bbr, fbr, colR - 0.1f, colG - 0.1f,
              colB - 0.1f);                          // Bottom
   r.drawQuad(ftl, ftr, fbr, fbl, colR, colG, colB); // Front
   r.drawQuad(btl, btr, bbr, bbl, colR - 0.05f, colG - 0.05f,
@@ -60,67 +171,88 @@ void drawBox(VulkanRenderer &r, float cx, float cy, float cz, float halfW,
   r.drawQuad(ftr, btr, bbr, fbr, colR, colG - 0.1f, colB); // Right
 }
 
-// Draw a 3D tank with body, turret, and cannon
+// Draw a 3D tank
 void drawTank3D(VulkanRenderer &r, const Vector &pos, const Vector &dir,
                 const Vector &side, float bodyR, float bodyG, float bodyB) {
-  // Scale factor: world units to Vulkan clip space
-  float scale = 0.05f;
-
-  // Tank center position (negate Y for Vulkan coord system)
-  float cx = static_cast<float>(pos.getX()) * scale;
-  float cy = -static_cast<float>(pos.getY()) * scale;
-  float cz = 0.0f; // Ground level
-
   float dx = static_cast<float>(dir.getX());
-  float dy = -static_cast<float>(dir.getY());
+  float dy = static_cast<float>(dir.getY());
   float sx = static_cast<float>(side.getX());
-  float sy = -static_cast<float>(side.getY());
+  float sy = static_cast<float>(side.getY());
 
-  // Tank body: 0.12 x 0.06 x 0.03
-  drawBox(r, cx, cy, cz + 0.015f, 0.03f, 0.04f, 0.015f, dx, dy, sx, sy, bodyR,
-          bodyG, bodyB);
+  float cx = static_cast<float>(pos.getX());
+  float cy = static_cast<float>(pos.getY());
 
-  // Turret: 0.05 x 0.05 x 0.02 (slightly above body)
-  drawBox(r, cx, cy, cz + 0.04f, 0.02f, 0.02f, 0.01f, dx, dy, sx, sy,
-          bodyR * 0.8f, bodyG * 0.8f, bodyB * 0.8f);
+  // Tank body
+  Vector bodyCenter(cx, cy, 0.25);
+  drawBox(r, bodyCenter, 0.6f, 1.0f, 0.25f, dx, dy, sx, sy, bodyR, bodyG,
+          bodyB);
 
-  // Cannon: 0.06 long, 0.01 wide, 0.01 tall (extends forward from turret)
-  float cannonCx = cx + dx * 0.05f;
-  float cannonCy = cy + dy * 0.05f;
-  drawBox(r, cannonCx, cannonCy, cz + 0.04f, 0.005f, 0.03f, 0.005f, dx, dy, sx,
-          sy, 0.3f, 0.3f, 0.3f);
+  // Turret
+  Vector turretCenter(cx, cy, 0.6);
+  drawBox(r, turretCenter, 0.4f, 0.4f, 0.15f, dx, dy, sx, sy, bodyR * 0.8f,
+          bodyG * 0.8f, bodyB * 0.8f);
+
+  // Cannon
+  float cannonCx = cx + dx * 1.2f;
+  float cannonCy = cy + dy * 1.2f;
+  Vector cannonCenter(cannonCx, cannonCy, 0.6);
+  drawBox(r, cannonCenter, 0.08f, 0.6f, 0.08f, dx, dy, sx, sy, 0.3f, 0.3f,
+          0.3f);
 }
 
-// Draw the ground plane
+// Draw projectile
+void drawProjectile(VulkanRenderer &r, const Vector &pos, float colR,
+                    float colG, float colB) {
+  Vector center(static_cast<float>(pos.getX()), static_cast<float>(pos.getY()),
+                0.5f);
+  drawBox(r, center, 0.15f, 0.15f, 0.15f, 1, 0, 0, 1, colR, colG, colB);
+}
+
+// Draw ground plane
 void drawGround(VulkanRenderer &r) {
-  // Large green plane at z = 0
-  Vector p1(-1.5f, -1.5f, -0.01f);
-  Vector p2(1.5f, -1.5f, -0.01f);
-  Vector p3(1.5f, 1.5f, -0.01f);
-  Vector p4(-1.5f, 1.5f, -0.01f);
+  Vector p1(-30, -30, -0.05);
+  Vector p2(30, -30, -0.05);
+  Vector p3(30, 30, -0.05);
+  Vector p4(-30, 30, -0.05);
   r.drawQuad(p1, p2, p3, p4, 0.2f, 0.35f, 0.15f);
 }
 
-// Render all game entities in 3D
+// Render all game entities
 void drawGame(VulkanRenderer &r, GameData &game) {
-  // Draw ground first
+  // Update camera
+  updateCamera(game);
+
+  // Build MVP matrix
+  float proj[16], view[16], vp[16];
+  buildProjectionMatrix(proj);
+  buildViewMatrix(view, camPos, camTarget, camUp);
+  multiplyMatrices(vp, proj, view);
+
+  // Set MVP matrix in renderer
+  r.setMVPMatrix(vp);
+
+  // Draw ground
   drawGround(r);
 
-  // Draw all tanks
+  // Draw entities
   const auto &agents = game.getAgentsVector();
   for (const auto &agent : agents) {
     if (!agent)
       continue;
 
-    Vector pos = agent->getPosition();
-    Vector dir = agent->getDir();
-    Vector side = agent->getSide();
-
-    // Player = green, enemies = red
-    if (agent.get() == game.getPlayer()) {
-      drawTank3D(r, pos, dir, side, 0.2f, 0.7f, 0.2f);
+    Projectile *proj = dynamic_cast<Projectile *>(agent.get());
+    if (proj) {
+      drawProjectile(r, agent->getPosition(), 1.0f, 0.8f, 0.2f);
     } else {
-      drawTank3D(r, pos, dir, side, 0.7f, 0.2f, 0.2f);
+      Vector pos = agent->getPosition();
+      Vector dir = agent->getDir();
+      Vector side = agent->getSide();
+
+      if (agent.get() == game.getPlayer()) {
+        drawTank3D(r, pos, dir, side, 0.2f, 0.7f, 0.2f);
+      } else {
+        drawTank3D(r, pos, dir, side, 0.7f, 0.2f, 0.2f);
+      }
     }
   }
 }

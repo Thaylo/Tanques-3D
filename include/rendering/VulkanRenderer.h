@@ -78,6 +78,7 @@ public:
   // Camera/view matrix
   void setViewMatrix(const float *matrix);
   void setProjectionMatrix(const float *matrix);
+  void setMVPMatrix(const float *matrix);
 
   // Window
   [[nodiscard]] SDL_Window *getWindow() const { return window; }
@@ -132,6 +133,9 @@ private:
   bool running{true};
   int windowWidth{800};
   int windowHeight{600};
+
+  // MVP matrix for 3D camera
+  float mvpMatrix[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 
   // Initialization helpers
   bool createInstance(const char *appName);

@@ -925,10 +925,10 @@ void VulkanRenderer::beginFrame() {
   scissor.extent = swapChainExtent;
   vkCmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
 
-  // Push identity MVP matrix for now
-  float mvp[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  // Push MVP matrix (set by setMVPMatrix or identity by default)
   vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout,
-                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
+                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvpMatrix),
+                     mvpMatrix);
 
   vertices.clear();
   // Entities added via drawTriangle/drawQuad calls between beginFrame/endFrame
@@ -1207,4 +1207,8 @@ void VulkanRenderer::setViewMatrix(const float *matrix) {
 
 void VulkanRenderer::setProjectionMatrix(const float *matrix) {
   // Will be implemented with push constants
+}
+
+void VulkanRenderer::setMVPMatrix(const float *matrix) {
+  std::memcpy(mvpMatrix, matrix, 16 * sizeof(float));
 }
