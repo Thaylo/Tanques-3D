@@ -158,9 +158,12 @@ void VulkanRenderer::cleanup() {
 }
 
 bool VulkanRenderer::createInstance(const char *appName) {
-  if (enableValidationLayers && !checkValidationLayerSupport()) {
-    std::cerr << "Validation layers requested but not available!" << std::endl;
-    return false;
+  // Check validation layers but don't fail if unavailable
+  bool useValidation = enableValidationLayers && checkValidationLayerSupport();
+  if (enableValidationLayers && !useValidation) {
+    std::cout
+        << "Note: Validation layers not available, continuing without them"
+        << std::endl;
   }
 
   VkApplicationInfo appInfo{};
@@ -186,7 +189,7 @@ bool VulkanRenderer::createInstance(const char *appName) {
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
-  if (enableValidationLayers) {
+  if (useValidation) {
     createInfo.enabledLayerCount =
         static_cast<uint32_t>(validationLayers.size());
     createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -223,22 +226,55 @@ bool VulkanRenderer::pickPhysicalDevice() {
   std::vector<VkPhysicalDevice> devices(deviceCount);
   vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+  // Score devices: prefer discrete > integrated > virtual > CPU
+  int bestScore = -1;
+  VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
+
   for (const auto &dev : devices) {
     QueueFamilyIndices indices = findQueueFamilies(dev);
-    if (indices.isComplete()) {
-      physicalDevice = dev;
+    if (!indices.isComplete())
+      continue;
 
-      VkPhysicalDeviceProperties props;
-      vkGetPhysicalDeviceProperties(dev, &props);
-      std::cout << "Selected GPU: " << props.deviceName << std::endl;
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(dev, &props);
+
+    int score = 0;
+    switch (props.deviceType) {
+    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+      score = 1000;
       break;
+    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+      score = 500;
+      break;
+    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+      score = 100;
+      break;
+    case VK_PHYSICAL_DEVICE_TYPE_CPU:
+      score = 10;
+      break;
+    default:
+      score = 1;
+      break;
+    }
+
+    std::cout << "Found GPU: " << props.deviceName << " (score: " << score
+              << ")" << std::endl;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestDevice = dev;
     }
   }
 
-  if (physicalDevice == VK_NULL_HANDLE) {
+  if (bestDevice == VK_NULL_HANDLE) {
     std::cerr << "Failed to find a suitable GPU!" << std::endl;
     return false;
   }
+
+  physicalDevice = bestDevice;
+  VkPhysicalDeviceProperties props;
+  vkGetPhysicalDeviceProperties(physicalDevice, &props);
+  std::cout << "Selected GPU: " << props.deviceName << std::endl;
 
   return true;
 }
@@ -737,4 +773,3 @@ void VulkanRenderer::setViewMatrix(const float *matrix) {
 void VulkanRenderer::setProjectionMatrix(const float *matrix) {
   // Will be implemented with push constants
 }
-
