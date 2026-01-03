@@ -18,10 +18,11 @@
 using namespace Training;
 using namespace AI;
 
-// Evolution parameters (50 agents for fast iteration)
-constexpr int POPULATION_SIZE = 50;
-constexpr int ELITE_COUNT = 5;
-constexpr int RANDOM_INJECT = 5;
+// Evolution parameters (25 agents for fast iteration)
+constexpr int POPULATION_SIZE = 25;
+constexpr int ELITE_COUNT = 3;        // Top 3 survive
+constexpr int CHAMPION_OFFSPRING = 5; // Winner gets 5 offspring (20%)
+constexpr int RANDOM_INJECT = 2;      // Fresh random networks
 constexpr float MUTATION_RATE = 0.15f;
 constexpr float MUTATION_STRENGTH = 0.4f;
 
@@ -30,8 +31,8 @@ constexpr float MAX_SIM_SPEED = 100.0f;
 constexpr float MIN_SIM_SPEED = 1.0f;
 
 // Visualization
-constexpr int WINDOW_SIZE = 800;
-constexpr float WORLD_SIZE = 400.0f;
+constexpr int WINDOW_SIZE = 700;
+constexpr float WORLD_SIZE = 300.0f;
 
 // Save file
 const char *SAVE_FILE = "battle_royale_best.bin";
@@ -215,9 +216,10 @@ private:
   }
 
   uint32_t getColorFromNN(const BattleRoyaleNN &nn) {
-    float w1 = std::abs(nn.weights1[0]) * 255;
-    float w2 = std::abs(nn.weights2[0]) * 255;
-    float w3 = std::abs(nn.weights3[0]) * 255;
+    // Use new RNN weight structure
+    float w1 = std::abs(nn.weightsInput[0]) * 255;
+    float w2 = std::abs(nn.weightsOutput[0]) * 255;
+    float w3 = std::abs(nn.weightsRecurrent[0][0]) * 255;
 
     uint8_t r = static_cast<uint8_t>(std::clamp(w1, 50.0f, 255.0f));
     uint8_t g = static_cast<uint8_t>(std::clamp(w2, 50.0f, 255.0f));
@@ -249,6 +251,14 @@ private:
     // Elites survive unchanged
     for (int i = 0; i < ELITE_COUNT; ++i) {
       newPop.push_back(population_[i]);
+    }
+
+    // CHAMPION ELITISM: Winner gets extra offspring (mutated copies)
+    for (int i = 0; i < CHAMPION_OFFSPRING; ++i) {
+      BattleRoyaleNN champion = population_[0]; // Copy the winner
+      champion.mutate(0.1f, 0.3f, rng_);        // Light mutation
+      champion.resetHiddenState();
+      newPop.push_back(champion);
     }
 
     // Random injection for diversity

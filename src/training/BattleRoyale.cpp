@@ -40,13 +40,10 @@ void BRAgent::reset(float startX, float startY, float startAngle) {
 
 float BRAgent::getFitness() const {
   // =============================================================
-  // PURE SURVIVAL FITNESS - Time alive is the ONLY metric
+  // EXPONENTIAL SURVIVAL FITNESS
+  // exp(timeAlive/30) - surviving longer matters exponentially more
   // =============================================================
-
-  // Survival time in seconds - that's it!
-  // Longer survival = higher fitness
-  // No placement bonus, no kills, no damage
-  return timeAlive;
+  return std::exp(timeAlive / 30.0f);
 }
 
 std::array<float, AI::BR_INPUT_SIZE>
@@ -58,8 +55,7 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
   input.fill(0.0f);
 
   // =====================================================
-  // OPTIMIZED: Find 3 closest enemies using fixed array
-  // No heap allocation, partial sort, squared distances
+  // OPTIMIZED: Find 5 closest enemies using fixed array
   // =====================================================
   struct EnemyDist {
     float distSq;
@@ -79,15 +75,15 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
     enemyDists[enemyCount++] = {distSq, i};
   }
 
-  // Partial sort: only find 3 closest (O(N) vs O(N log N))
-  int topK = std::min(3, enemyCount);
+  // Partial sort: find 5 closest (O(N) vs O(N log N))
+  int topK = std::min(5, enemyCount);
   std::partial_sort(enemyDists.begin(), enemyDists.begin() + topK,
                     enemyDists.begin() + enemyCount,
                     [](const EnemyDist &a, const EnemyDist &b) {
                       return a.distSq < b.distSq;
                     });
 
-  // Populate enemy inputs (3 closest) - ALL IN AGENT'S LOCAL FRAME
+  // Populate enemy inputs (5 closest) - ALL IN AGENT'S LOCAL FRAME
   // Use CACHED trig values (precomputed in step())
   float localCos = cosNegAngle;
   float localSin = sinNegAngle;
@@ -148,36 +144,13 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
   float safetyMargin = (zoneRadius > 0) ? (distToEdge / zoneRadius) : 0.0f;
   input[AI::BRInput::ZONE_DIST] = std::clamp(safetyMargin, -1.0f, 1.0f);
 
-  // Direction to zone center (self-centered, CCW from facing)
-  float angleToZone = std::atan2(dzY, dzX) - angle;
-  while (angleToZone > M_PI)
-    angleToZone -= 2 * M_PI;
-  while (angleToZone < -M_PI)
-    angleToZone += 2 * M_PI;
-  input[AI::BRInput::ZONE_DIR] = angleToZone / static_cast<float>(M_PI);
-
-  // Zone shrink progress: 1 = full size, 0 = minimum size
+  // Zone radius normalized
   input[AI::BRInput::ZONE_RADIUS] = zoneRadius / maxZoneRadius;
 
-  // Time pressure: 0 = just shrunk, 1 = about to shrink
-  input[AI::BRInput::ZONE_TIMER] =
-      std::clamp(1.0f - (zoneShrinkTimer / 5.0f), 0.0f, 1.0f);
-
-  // =============================================================
-  // ZONE CENTER POSITION (self-centered local coordinates)
-  // Rotates with agent's facing direction - uses CACHED trig
-  // =============================================================
-  float localZoneX =
-      dzX * cosNegAngle - dzY * sinNegAngle; // Transform to local X
-  float localZoneY =
-      dzX * sinNegAngle + dzY * cosNegAngle; // Transform to local Y
-
-  // Normalize by max distance (arena diagonal ~566 for 800x800)
-  float maxDist = 600.0f;
+  // Zone center in local frame (X only for simplified input)
+  float localZoneX = dzX * cosNegAngle - dzY * sinNegAngle;
   input[AI::BRInput::ZONE_CENTER_X] =
-      std::clamp(localZoneX / maxDist, -1.0f, 1.0f);
-  input[AI::BRInput::ZONE_CENTER_Y] =
-      std::clamp(localZoneY / maxDist, -1.0f, 1.0f);
+      std::clamp(localZoneX / 300.0f, -1.0f, 1.0f);
 
   return input;
 }
@@ -222,19 +195,26 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
-  // Initialize octree for 400x400 arena (with Z for future 3D)
+  // Initialize octree for 300x300 arena (with Z for future 3D)
   octree_ = std::make_unique<Spatial::Octree<size_t>>(
-      Spatial::AABB(-200, -200, -100, 200, 200, 100));
+      Spatial::AABB(-150, -150, -100, 150, 150, 100));
 }
 
 void BattleRoyaleArena::reset() {
   zone_ = SafeZone();
-  zone_.radius = 200.0f;
-  zone_.targetRadius = 200.0f;
+  zone_.radius = 150.0f; // Smaller zone for 25 agents
+  zone_.targetRadius = 150.0f;
   projectiles_.clear();
   elapsedTime_ = 0;
   roundOver_ = false;
   nextPlacement_ = AGENT_COUNT;
+
+  // Reset hidden states for all brains at start of round
+  for (auto &agent : agents_) {
+    if (agent.brain) {
+      agent.brain->resetHiddenState();
+    }
+  }
 
   spawnAgents();
 }

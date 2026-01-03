@@ -92,14 +92,14 @@ struct Projectile {
 };
 
 /**
- * BattleRoyaleArena - 50-tank battle with visualization
+ * BattleRoyaleArena - 25-tank battle with visualization
  * Uses octree for efficient spatial queries
  */
 class BattleRoyaleArena {
 public:
-  static constexpr int AGENT_COUNT = 50;
-  static constexpr float ARENA_SIZE = 400.0f;
-  static constexpr float MAX_ROUND_TIME = 120.0f;
+  static constexpr int AGENT_COUNT = 25;
+  static constexpr float ARENA_SIZE = 300.0f;    // Smaller for 25 agents
+  static constexpr float MAX_ROUND_TIME = 90.0f; // Shorter rounds
 
   BattleRoyaleArena();
 
