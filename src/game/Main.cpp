@@ -16,12 +16,14 @@
 #include "entities/Projectile.h"
 #include "game/Control.h"
 #include "game/GameData.h"
+#include "physics/PhysicsWorld.h"
 #include "rendering/VulkanRenderer.h"
 #include "rendering/VulkanWindow.h"
 
 static std::unique_ptr<GameData> gameDataPtr;
 GameData *gameData = nullptr;
 static std::unique_ptr<VulkanRenderer> renderer;
+static std::unique_ptr<Physics::PhysicsWorld> physicsWorld;
 static Control control;
 static long lastIterationTime = 0;
 
@@ -306,6 +308,18 @@ int main(int argc, char *argv[]) {
   renderer = std::make_unique<VulkanRenderer>();
   if (!renderer->initialize("Tanques3D", 800, 600)) {
     std::cerr << "Failed to initialize Vulkan renderer!" << std::endl;
+    return 1;
+  }
+
+  // Initialize Apple Silicon Metal physics
+  try {
+    physicsWorld = std::make_unique<Physics::PhysicsWorld>();
+    physicsWorld->initialize();
+    physicsWorld->setGravity(9.81f); // Standard Earth gravity
+    std::cout << "Metal physics: " << physicsWorld->getDeviceName()
+              << std::endl;
+  } catch (const Physics::MetalComputeError &e) {
+    std::cerr << "Metal physics error: " << e.what() << std::endl;
     return 1;
   }
 
