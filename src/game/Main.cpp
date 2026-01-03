@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 
+#include "ai/AIController.h"
 #include "core/Constants.h"
 #include "core/Timer.h"
 #include "core/Vector.h"
@@ -24,6 +25,7 @@ static std::unique_ptr<GameData> gameDataPtr;
 GameData *gameData = nullptr;
 static std::unique_ptr<VulkanRenderer> renderer;
 static std::unique_ptr<Physics::PhysicsWorld> physicsWorld;
+static std::unique_ptr<AI::AIController> aiController;
 static Control control;
 static long lastIterationTime = 0;
 
@@ -320,6 +322,16 @@ int main(int argc, char *argv[]) {
               << std::endl;
   } catch (const Physics::MetalComputeError &e) {
     std::cerr << "Metal physics error: " << e.what() << std::endl;
+    return 1;
+  }
+
+  // Initialize Neural Engine AI
+  try {
+    aiController = std::make_unique<AI::AIController>();
+    aiController->initialize();
+    std::cout << "AI: " << aiController->getComputeDevice() << std::endl;
+  } catch (const AI::CoreMLError &e) {
+    std::cerr << "AI error: " << e.what() << std::endl;
     return 1;
   }
 
