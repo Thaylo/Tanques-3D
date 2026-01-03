@@ -161,6 +161,22 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
   input[AI::BRInput::ZONE_TIMER] =
       std::clamp(1.0f - (zoneShrinkTimer / 5.0f), 0.0f, 1.0f);
 
+  // =============================================================
+  // ZONE CENTER POSITION (self-centered local coordinates)
+  // Rotates with agent's facing direction
+  // =============================================================
+  float cosA = std::cos(-angle); // Rotation to local frame
+  float sinA = std::sin(-angle);
+  float localZoneX = dzX * cosA - dzY * sinA; // Transform to local X
+  float localZoneY = dzX * sinA + dzY * cosA; // Transform to local Y
+
+  // Normalize by max distance (arena diagonal ~566 for 800x800)
+  float maxDist = 600.0f;
+  input[AI::BRInput::ZONE_CENTER_X] =
+      std::clamp(localZoneX / maxDist, -1.0f, 1.0f);
+  input[AI::BRInput::ZONE_CENTER_Y] =
+      std::clamp(localZoneY / maxDist, -1.0f, 1.0f);
+
   return input;
 }
 
@@ -204,15 +220,16 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
-  // Initialize octree for 400x400 arena (with Z for future 3D)
+  // Initialize octree for 800x800 arena (with Z for future 3D)
   octree_ = std::make_unique<Spatial::Octree<size_t>>(
-      Spatial::AABB(-200, -200, -100, 200, 200, 100));
+      Spatial::AABB(-400, -400, -100, 400, 400, 100));
 }
 
 void BattleRoyaleArena::reset() {
   zone_ = SafeZone();
-  zone_.radius = 200.0f;
-  zone_.targetRadius = 200.0f;
+  zone_.radius = 400.0f; // Larger zone for 400 agents
+  zone_.targetRadius = 400.0f;
+  zone_.minRadius = 40.0f; // Larger minimum
   projectiles_.clear();
   elapsedTime_ = 0;
   roundOver_ = false;

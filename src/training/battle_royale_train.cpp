@@ -18,20 +18,20 @@
 using namespace Training;
 using namespace AI;
 
-// Evolution parameters
-constexpr int POPULATION_SIZE = 50;
-constexpr int ELITE_COUNT = 5;
-constexpr int RANDOM_INJECT = 5;
+// Evolution parameters (scaled for 400 agents)
+constexpr int POPULATION_SIZE = 400;
+constexpr int ELITE_COUNT = 20;   // Top 5%
+constexpr int RANDOM_INJECT = 20; // Fresh random networks
 constexpr float MUTATION_RATE = 0.15f;
 constexpr float MUTATION_STRENGTH = 0.4f;
 
 // Speed scaling
-constexpr float MAX_SIM_SPEED = 100.0f; // Speed when 50 tanks
-constexpr float MIN_SIM_SPEED = 1.0f;   // Speed when 1 tank
+constexpr float MAX_SIM_SPEED = 100.0f;
+constexpr float MIN_SIM_SPEED = 1.0f;
 
-// Visualization
-constexpr int WINDOW_SIZE = 800;
-constexpr float WORLD_SIZE = 400.0f;
+// Visualization (800x800 arena needs larger view)
+constexpr int WINDOW_SIZE = 900;
+constexpr float WORLD_SIZE = 800.0f;
 
 // Save file
 const char *SAVE_FILE = "battle_royale_best.bin";

@@ -63,17 +63,19 @@ constexpr int SELF_HEALTH = 21;
 constexpr int SELF_RELOAD = 22; // 0=ready, 1=reloading
 
 // Safe zone
-constexpr int ZONE_DIST = 23;   // Distance to edge
-constexpr int ZONE_DIR = 24;    // Direction to center
-constexpr int ZONE_RADIUS = 25; // Current radius
-constexpr int ZONE_TIMER = 26;  // Time until shrink
+constexpr int ZONE_DIST = 23;   // Distance to edge (normalized safety margin)
+constexpr int ZONE_DIR = 24;    // Direction to center (self-centered)
+constexpr int ZONE_RADIUS = 25; // Current radius (normalized)
+constexpr int ZONE_TIMER = 26;  // Time pressure (0=safe, 1=shrinking soon)
 
-// Reserved
-constexpr int RESERVED1 = 27;
-constexpr int RESERVED2 = 28;
-constexpr int RESERVED3 = 29;
-constexpr int RESERVED4 = 30;
-constexpr int RESERVED5 = 31;
+// Zone center position (self-centered, rotates with agent)
+constexpr int ZONE_CENTER_X = 27; // Local X to zone center
+constexpr int ZONE_CENTER_Y = 28; // Local Y to zone center
+
+// Reserved for future
+constexpr int RESERVED1 = 29;
+constexpr int RESERVED2 = 30;
+constexpr int RESERVED3 = 31;
 } // namespace BRInput
 
 /**
