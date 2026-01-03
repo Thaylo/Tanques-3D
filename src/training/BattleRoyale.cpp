@@ -221,16 +221,15 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
-  // Initialize octree for 800x800 arena (with Z for future 3D)
+  // Initialize octree for 400x400 arena (with Z for future 3D)
   octree_ = std::make_unique<Spatial::Octree<size_t>>(
-      Spatial::AABB(-400, -400, -100, 400, 400, 100));
+      Spatial::AABB(-200, -200, -100, 200, 200, 100));
 }
 
 void BattleRoyaleArena::reset() {
   zone_ = SafeZone();
-  zone_.radius = 400.0f; // Larger zone for 400 agents
-  zone_.targetRadius = 400.0f;
-  zone_.minRadius = 40.0f; // Larger minimum
+  zone_.radius = 200.0f;
+  zone_.targetRadius = 200.0f;
   projectiles_.clear();
   elapsedTime_ = 0;
   roundOver_ = false;
