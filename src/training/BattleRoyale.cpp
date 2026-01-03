@@ -13,8 +13,7 @@ namespace Training {
 constexpr float MAX_SPEED = 25.0f;
 constexpr float ACCELERATION = 50.0f;
 constexpr float TURN_RATE = 2.5f;
-constexpr float FRICTION =
-    5.0f; // Ground friction - tanks stop when not accelerating
+constexpr float FRICTION = 25.0f; // High friction - tanks grip the ground
 constexpr float PROJECTILE_SPEED = 150.0f;
 constexpr float PROJECTILE_RANGE = 100.0f;
 constexpr float PROJECTILE_DAMAGE = 25.0f;
