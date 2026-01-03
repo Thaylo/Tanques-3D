@@ -32,7 +32,10 @@ struct TrainingAgent {
 
   // Fitness tracking
   float damageDealt = 0.0f;
+  float rangedDamage = 0.0f; // Damage from distance > 20m
   int kills = 0;
+  int shotsFired = 0;
+  int shotsHit = 0;
   float survivalTime = 0.0f;
   bool alive = true;
 

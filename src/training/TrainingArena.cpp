@@ -26,28 +26,39 @@ void TrainingAgent::reset(float startX, float startY, float startAngle) {
   health = 100.0f;
   reloadTimer = 0.0f;
   damageDealt = 0.0f;
+  rangedDamage = 0.0f;
   kills = 0;
+  shotsFired = 0;
+  shotsHit = 0;
   survivalTime = 0.0f;
   alive = true;
 }
 
 float TrainingAgent::getFitness() const {
-  // Aggressive fitness function: KILL OR BE KILLED
+  // AGGRESSIVE FITNESS: Incentivize ranged shooting
   float fitness = 0.0f;
 
-  fitness += kills * 500.0f;      // HUGE kill bonus
-  fitness += damageDealt * 5.0f;  // Damage dealt bonus
-  fitness += survivalTime * 0.5f; // Minor survival bonus
+  // SHOOTING REWARDS (key to evolving shooters)
+  fitness += shotsFired * 10.0f;   // Reward trying to shoot
+  fitness += shotsHit * 50.0f;     // Reward hitting
+  fitness += rangedDamage * 20.0f; // HUGE bonus for ranged damage
 
+  // Combat rewards
+  fitness += kills * 500.0f;     // Kill bonus
+  fitness += damageDealt * 3.0f; // Base damage bonus
+
+  // Survival
+  fitness += survivalTime * 0.2f;
   if (alive) {
-    fitness += 200.0f; // Alive bonus
+    fitness += 100.0f;
   } else {
-    fitness -= 200.0f; // Death penalty
+    fitness -= 150.0f;
   }
 
-  // Bonus for efficient kills (kills per survival time)
-  if (survivalTime > 0) {
-    fitness += (kills / survivalTime) * 100.0f;
+  // Accuracy bonus (hit rate)
+  if (shotsFired > 0) {
+    float accuracy = static_cast<float>(shotsHit) / shotsFired;
+    fitness += accuracy * 200.0f; // Reward accuracy
   }
 
   return std::max(0.0f, fitness);
@@ -171,9 +182,22 @@ void TrainingArena::simulateStep(float dt) {
     // Shooting
     agent.reloadTimer -= dt;
     if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
+      agent.shotsFired++; // Track attempt
+
+      // Calculate distance to target
+      float dx = nearest->x - agent.x;
+      float dy = nearest->y - agent.y;
+      float dist = std::sqrt(dx * dx + dy * dy);
+
       if (checkHit(agent, *nearest)) {
+        agent.shotsHit++;
         nearest->health -= PROJECTILE_DAMAGE;
         agent.damageDealt += PROJECTILE_DAMAGE;
+
+        // Bonus for ranged damage (> 20 meters)
+        if (dist > 20.0f) {
+          agent.rangedDamage += PROJECTILE_DAMAGE;
+        }
 
         if (nearest->health <= 0) {
           nearest->alive = false;
