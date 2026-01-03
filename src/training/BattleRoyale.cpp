@@ -504,6 +504,7 @@ void BattleRoyaleArena::checkProjectileHits() {
           target.alive = false;
           target.placement = nextPlacement_--;
           agents_[p.shooterId].kills++;
+          agents_[p.shooterId].health = 100.0f; // Kill heals shooter!
         }
         break;
       }
