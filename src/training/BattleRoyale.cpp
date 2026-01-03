@@ -282,22 +282,35 @@ bool BattleRoyaleArena::step(float dt) {
   }
 
   // =====================================================
-  // SEQUENTIAL AGENT PROCESSING
-  // (GCD removed: race condition with RNN hidden state)
-  // 25 agents is fast enough without parallelism
+  // TWO-PHASE PARALLEL (thread-safe GCD)
+  // Phase 1: Sequential trig cache update
+  // Phase 2: Parallel NN + movement (read-only shared state)
   // =====================================================
+
+  // PHASE 1: Pre-compute trig caches BEFORE parallel access
+  for (auto &agent : agents_) {
+    if (agent.alive) {
+      agent.cosNegAngle = std::cos(-agent.angle);
+      agent.sinNegAngle = std::sin(-agent.angle);
+    }
+  }
+
   float zoneX = zone_.centerX;
   float zoneY = zone_.centerY;
   float zoneRadius = zone_.radius;
   float zoneShrinkTimer = zone_.shrinkTimer;
   float maxZoneRadius = 150.0f;
+  float elapsed = elapsedTime_;
 
-  for (size_t i = 0; i < agents_.size(); ++i) {
+  // PHASE 2: GCD parallel agent processing
+  dispatch_queue_t queue =
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
+  dispatch_apply(agents_.size(), queue, ^(size_t i) {
     BRAgent &agent = agents_[i];
     if (!agent.alive)
-      continue;
+      return;
 
-    agent.timeAlive = elapsedTime_;
+    agent.timeAlive = elapsed;
     agent.wantsToShoot = false;
 
     auto input = agent.getInputs(agents_, zoneX, zoneY, zoneRadius,
@@ -309,11 +322,8 @@ bool BattleRoyaleArena::step(float dt) {
     float shouldShoot = output[2];
 
     agent.angle += turnDir * TURN_RATE * dt;
-
     agent.cosAngle = std::cos(agent.angle);
     agent.sinAngle = std::sin(agent.angle);
-    agent.cosNegAngle = agent.cosAngle;
-    agent.sinNegAngle = -agent.sinAngle;
 
     float ax = agent.cosAngle * throttle * ACCELERATION;
     float ay = agent.sinAngle * throttle * ACCELERATION;
@@ -324,9 +334,8 @@ bool BattleRoyaleArena::step(float dt) {
     if (speed > 0.01f) {
       float frictionDecel = FRICTION * dt;
       float newSpeed = std::max(0.0f, speed - frictionDecel);
-      float factor = newSpeed / speed;
-      agent.vx *= factor;
-      agent.vy *= factor;
+      agent.vx *= newSpeed / speed;
+      agent.vy *= newSpeed / speed;
       speed = newSpeed;
     }
 
@@ -342,7 +351,7 @@ bool BattleRoyaleArena::step(float dt) {
     if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
       agent.wantsToShoot = true;
     }
-  }
+  });
 
   // =====================================================
   // SEQUENTIAL: Collect projectiles (not thread-safe)
