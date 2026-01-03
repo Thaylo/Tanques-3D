@@ -31,7 +31,7 @@ struct BRAgent {
   float sinNegAngle = 0.0f; // sin(-angle) for local frame rotation
 
   // Combat state
-  float health = 100.0f;
+  float health = 34.0f; // Reduced by 66% for faster combat
   float stamina =
       100.0f; // Depletes when turning/shooting, regenerates when idle
   float reloadTimer = 0.0f;
@@ -70,7 +70,7 @@ struct SafeZone {
   float centerX = 0, centerY = 0;
   float radius = 200.0f;
   float targetRadius = 200.0f;
-  float shrinkSpeed = 10.0f; // meters per second when shrinking
+  float shrinkSpeed = 30.0f; // 3x faster zone shrinking
   float shrinkTimer = 5.0f;  // seconds until next shrink
   float shrinkInterval = 5.0f;
   float damagePerSecond = 20.0f; // 10x damage for fast attrition

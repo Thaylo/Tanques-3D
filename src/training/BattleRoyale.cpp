@@ -26,7 +26,7 @@ void BRAgent::reset(float startX, float startY, float startAngle) {
   y = startY;
   angle = startAngle;
   vx = vy = 0;
-  health = 100.0f;
+  health = 34.0f;
   stamina = 100.0f;
   reloadTimer = 0.0f;
   damageDealt = 0.0f;
@@ -517,7 +517,7 @@ void BattleRoyaleArena::checkProjectileHits() {
           target.alive = false;
           target.placement = nextPlacement_--;
           agents_[p.shooterId].kills++;
-          agents_[p.shooterId].health = 100.0f; // Kill heals shooter!
+          agents_[p.shooterId].health = 34.0f; // Kill heals shooter!
         }
         break;
       }
