@@ -84,11 +84,12 @@ set(RENDERING_SOURCES
     src/rendering/Drawable.cpp
 )
 
-# Apple Silicon physics sources (Objective-C++)
+# Apple Silicon physics and AI sources (Objective-C++)
 if(APPLE)
     set(PHYSICS_SOURCES
         src/physics/MetalCompute.mm
         src/physics/PhysicsWorld.mm
+        src/ai/AIController.mm
     )
 else()
     set(PHYSICS_SOURCES)
@@ -138,6 +139,7 @@ add_executable(Tanques3DTests
     tests/unit/test_projectile_physics.cpp
     tests/integration/test_gamedata.cpp
     tests/integration/test_metal_physics.mm
+    tests/integration/test_ai_controller.mm
 )
 target_link_libraries(Tanques3DTests PRIVATE
     Tanques3DLib
