@@ -18,6 +18,13 @@
 #include <memory>
 #include <vector>
 
+// Forward declarations
+class Ground;
+class Camera;
+namespace AI {
+class AIController;
+}
+
 // Forward declarations to avoid OpenGL dependencies
 class Ground;
 class Camera;
@@ -31,6 +38,7 @@ private:
   Control control;
   Agent *player; // Non-owning pointer to player in agents vector
   std::vector<std::unique_ptr<Agent>> agents;
+  AI::AIController *aiController_ = nullptr;
   int gameState;
   int numEnemies;
 
@@ -38,6 +46,9 @@ public:
   GameData();
   ~GameData() = default; // unique_ptr handles cleanup
 
+  void setAIController(AI::AIController *controller) {
+    aiController_ = controller;
+  }
   void initializeGame(int enemies);
   void setControl(const Control &ctrl);
   Control *getControl();

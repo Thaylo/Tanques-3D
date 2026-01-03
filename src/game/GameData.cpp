@@ -31,6 +31,7 @@ void GameData::initializeGame(int enemies) {
   std::generate_n(std::back_inserter(agents), enemies, [this]() {
     auto enemy = std::make_unique<Enemy>(player);
     enemy->setId(0);
+    enemy->setAIController(aiController_); // Connect trained neural network
     // Spawn enemies 50-150 meters from center (SI units)
     double angle = (rand() % 360) * 3.14159 / 180.0;
     double dist = 50.0 + (rand() % 100); // 50-150 meters

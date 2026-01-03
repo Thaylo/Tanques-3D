@@ -337,6 +337,8 @@ int main(int argc, char *argv[]) {
 
   gameDataPtr = std::make_unique<GameData>();
   gameData = gameDataPtr.get();
+  gameData->setAIController(
+      aiController.get()); // Connect trained AI to enemies
   gameData->initializeGame(numEnemies);
   control = initializeControl();
 
