@@ -2,7 +2,7 @@
  * AIController.mm - Core ML Neural Engine Implementation
  *
  * Apple Silicon Neural Engine powered AI for enemy behaviors.
- * Uses Core ML for low-latency, power-efficient inference.
+ * Uses trained neural network for intelligent decisions.
  */
 
 #import <CoreML/CoreML.h>
@@ -10,7 +10,9 @@
 #import <simd/simd.h>
 
 #include "ai/AIController.h"
+#include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 
 namespace AI {
@@ -44,22 +46,35 @@ void AIController::initialize() {
 
     std::cout << "[AIController] Initialized with Neural Engine support"
               << std::endl;
-    std::cout
-        << "[AIController] Note: Using heuristic AI (no trained model yet)"
-        << std::endl;
 
     initialized_ = true;
 
-    // Future: Load trained .mlmodel file
-    // NSError* error = nil;
-    // NSURL* modelURL = [[NSBundle mainBundle] URLForResource:@"EnemyAI"
-    //                                          withExtension:@"mlmodelc"];
-    // if (modelURL) {
-    //     context_->model = [MLModel modelWithContentsOfURL:modelURL
-    //                                        configuration:context_->config
-    //                                                error:&error];
-    // }
+    // Try to load trained weights automatically
+    if (loadWeights("assets/ml/trained_enemy_ai.bin")) {
+      std::cout << "[AIController] Loaded trained neural network" << std::endl;
+    } else {
+      std::cout << "[AIController] Using heuristic AI (no trained model)"
+                << std::endl;
+    }
   }
+}
+
+bool AIController::loadWeights(const std::string &path) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file) {
+    return false;
+  }
+
+  std::vector<float> data(TOTAL_WEIGHTS);
+  file.read(reinterpret_cast<char *>(data.data()), data.size() * sizeof(float));
+
+  if (!file) {
+    return false;
+  }
+
+  trainedNetwork_.deserialize(data);
+  trainedModelLoaded_ = true;
+  return true;
 }
 
 void AIController::shutdown() {
@@ -67,26 +82,52 @@ void AIController::shutdown() {
     context_->model = nil;
     context_->config = nil;
     initialized_ = false;
+    trainedModelLoaded_ = false;
   }
+}
+
+AIDecision AIController::neuralNetworkDecision(const AIInput &input) {
+  // Prepare input array for neural network
+  std::array<float, INPUT_SIZE> nnInput = {
+      input.distanceToTarget / 200.0f,                // Normalize to arena size
+      input.angleToTarget / static_cast<float>(M_PI), // -1 to 1
+      input.targetVelocityX / 25.0f,                  // Normalize to max speed
+      input.targetVelocityY / 25.0f,
+      input.myVelocityX / 25.0f,
+      input.myVelocityY / 25.0f,
+      input.myHealth / 100.0f,
+      input.targetHealth / 100.0f};
+
+  // Run forward pass
+  auto output = trainedNetwork_.forward(nnInput);
+
+  AIDecision decision = {};
+  decision.turnDirection = output[0]; // Already -1 to 1 (tanh)
+  decision.throttle = output[1];      // Already 0 to 1 (sigmoid)
+  decision.shouldShoot = output[2];   // Already 0 to 1 (sigmoid)
+  decision.aggression = output[3];    // Already 0 to 1 (sigmoid)
+
+  return decision;
 }
 
 AIDecision AIController::heuristicDecision(const AIInput &input) {
   AIDecision decision = {};
 
-  // Rule-based heuristic that mimics trained behavior
+  // Rule-based heuristic as fallback
   float dist = input.distanceToTarget;
   float angle = input.angleToTarget;
 
   // Turn toward target (normalized to -1..1)
-  decision.turnDirection = std::clamp(angle / (float)M_PI, -1.0f, 1.0f);
+  float normalizedAngle = angle / static_cast<float>(M_PI);
+  decision.turnDirection = std::max(-1.0f, std::min(1.0f, normalizedAngle));
 
   // Throttle based on distance
   if (dist > 15.0f) {
-    decision.throttle = 1.0f; // Full speed when far
+    decision.throttle = 1.0f;
   } else if (dist > 7.0f) {
-    decision.throttle = 0.5f; // Slow down approaching
+    decision.throttle = 0.5f;
   } else {
-    decision.throttle = 0.0f; // Stop when close
+    decision.throttle = 0.0f;
   }
 
   // Shoot when aimed and in range
@@ -96,7 +137,7 @@ AIDecision AIController::heuristicDecision(const AIInput &input) {
 
   // Aggression based on health ratio
   float healthRatio = input.myHealth / std::max(input.targetHealth, 0.1f);
-  decision.aggression = std::clamp(healthRatio, 0.0f, 1.0f);
+  decision.aggression = std::max(0.0f, std::min(1.0f, healthRatio));
 
   return decision;
 }
@@ -106,19 +147,13 @@ AIDecision AIController::predict(const AIInput &input) {
     throw CoreMLError("AIController not initialized");
   }
 
-  // For now, use heuristic AI
-  // Future: Use Core ML model inference
-  if (context_->model == nil) {
-    return heuristicDecision(input);
+  // Use trained neural network if available
+  if (trainedModelLoaded_) {
+    return neuralNetworkDecision(input);
   }
 
-  @autoreleasepool {
-    // Future: Create MLFeatureProvider with input features
-    // Run inference: [context_->model predictionFromFeatures:provider
-    // error:&error] Extract outputs and return AIDecision
-
-    return heuristicDecision(input);
-  }
+  // Fallback to heuristic
+  return heuristicDecision(input);
 }
 
 std::vector<AIDecision>
@@ -138,6 +173,9 @@ bool AIController::isNeuralEngineAvailable() const {
 }
 
 std::string AIController::getComputeDevice() const {
+  if (trainedModelLoaded_) {
+    return "Trained Neural Network";
+  }
   if (context_->deviceInfo) {
     return std::string([context_->deviceInfo UTF8String]);
   }

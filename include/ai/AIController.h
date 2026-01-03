@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "core/Vector.h"
+#include "ai/NeuralNetwork.h"
 
 namespace AI {
 
@@ -55,8 +55,7 @@ public:
 /**
  * AIController - Neural Engine powered AI
  *
- * Uses Core ML to run inference on Apple's Neural Engine (ANE)
- * for low-latency, power-efficient AI decisions.
+ * Uses trained neural network for intelligent enemy decisions.
  */
 class AIController {
 public:
@@ -66,10 +65,13 @@ public:
   // Initialize Core ML runtime - throws on failure
   void initialize();
 
+  // Load trained weights from file
+  bool loadWeights(const std::string &path);
+
   // Shutdown Core ML
   void shutdown();
 
-  // Run AI inference on Neural Engine
+  // Run AI inference
   AIDecision predict(const AIInput &input);
 
   // Batch prediction for multiple enemies
@@ -78,15 +80,23 @@ public:
   // Check if Neural Engine is available
   bool isNeuralEngineAvailable() const;
 
+  // Check if trained model is loaded
+  bool isTrainedModelLoaded() const { return trainedModelLoaded_; }
+
   // Get device info
   std::string getComputeDevice() const;
 
 private:
   std::unique_ptr<CoreMLContext> context_;
+  NeuralNetwork trainedNetwork_;
   bool initialized_ = false;
+  bool trainedModelLoaded_ = false;
 
   // Fallback heuristic AI when model not available
   AIDecision heuristicDecision(const AIInput &input);
+
+  // Neural network inference
+  AIDecision neuralNetworkDecision(const AIInput &input);
 };
 
 } // namespace AI
