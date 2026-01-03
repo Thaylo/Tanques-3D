@@ -1,27 +1,36 @@
 cmake_minimum_required(VERSION 3.14)
-project(Tanques3D VERSION 2.0.0 LANGUAGES CXX)
+project(Tanques3D VERSION 2.0.0 LANGUAGES CXX OBJCXX)
 
 # Use C++23 standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Objective-C++ settings for Metal
+set(CMAKE_OBJCXX_STANDARD 23)
+
 message(STATUS "Building Tanques3D with Vulkan/SDL2 renderer (Metal via MoltenVK on macOS)")
+message(STATUS "Apple Silicon Physics: Metal Compute + Core ML + Accelerate")
 
 # Find Vulkan and SDL2
 find_package(Vulkan REQUIRED)
 find_package(SDL2 REQUIRED)
 
 if(APPLE)
-    # MoltenVK provides Vulkan on macOS
+    # Full Apple Silicon stack: Vulkan (via MoltenVK), Metal, CoreML, Accelerate
     set(PLATFORM_LIBS 
         Vulkan::Vulkan 
         SDL2::SDL2
         "-framework Metal"
+        "-framework MetalKit"
         "-framework QuartzCore"
         "-framework IOSurface"
+        "-framework CoreML"
+        "-framework Accelerate"
+        "-framework Foundation"
     )
     add_compile_definitions(VK_USE_PLATFORM_METAL_EXT)
+    add_compile_definitions(APPLE_SILICON_PHYSICS)
 else()
     set(PLATFORM_LIBS 
         Vulkan::Vulkan 
@@ -36,6 +45,8 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include/entities
     ${CMAKE_SOURCE_DIR}/include/game
     ${CMAKE_SOURCE_DIR}/include/rendering
+    ${CMAKE_SOURCE_DIR}/include/physics
+    ${CMAKE_SOURCE_DIR}/include/ai
     ${Vulkan_INCLUDE_DIRS}
 )
 
@@ -73,12 +84,23 @@ set(RENDERING_SOURCES
     src/rendering/Drawable.cpp
 )
 
+# Apple Silicon physics sources (Objective-C++)
+if(APPLE)
+    set(PHYSICS_SOURCES
+        src/physics/MetalCompute.mm
+        src/physics/PhysicsWorld.mm
+    )
+else()
+    set(PHYSICS_SOURCES)
+endif()
+
 # Library for testing (excludes main and OpenGL)
 add_library(Tanques3DLib STATIC
     ${CORE_SOURCES}
     ${ENTITY_SOURCES}
     ${GAME_SOURCES}
     ${RENDERING_SOURCES}
+    ${PHYSICS_SOURCES}
 )
 target_link_libraries(Tanques3DLib PUBLIC ${PLATFORM_LIBS})
 
