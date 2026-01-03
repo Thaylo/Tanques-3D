@@ -37,30 +37,22 @@ void BRAgent::reset(float startX, float startY, float startAngle) {
 }
 
 float BRAgent::getFitness() const {
-  float fitness = 0.0f;
-
   // =============================================================
-  // SURVIVAL-FOCUSED FITNESS
-  // Priority: Stay alive > Final placement > Combat success
+  // PURE SURVIVAL FITNESS
+  // Only survival matters. Kills are just a means to an end.
   // =============================================================
 
-  // 1. SURVIVAL TIME - Most important for Battle Royale
-  //    120 seconds max = 1200 points potential
-  fitness += timeAlive * 10.0f;
+  // 1. SURVIVAL TIME - How long did you stay alive?
+  //    120 seconds max = 1200 points
+  float fitness = timeAlive * 10.0f;
 
-  // 2. FINAL PLACEMENT - The ultimate goal
+  // 2. FINAL PLACEMENT - The ultimate measure of survival
   //    Winner (placement 1) gets 9800 bonus points
+  //    Last place (placement 50) gets 0 bonus
   fitness += (50 - placement) * 200.0f;
 
-  // 3. COMBAT - Secondary to survival
-  fitness += kills * 100.0f;     // Kills matter but don't rush
-  fitness += damageDealt * 1.0f; // Chip damage counts
-
-  // 4. ACCURACY - Reward precision over spray
-  if (shotsFired >= 3) {
-    float accuracy = static_cast<float>(shotsHit) / shotsFired;
-    fitness += accuracy * 100.0f;
-  }
+  // That's it. No kills, no damage, no accuracy.
+  // Survive by any means necessary.
 
   return std::max(0.0f, fitness);
 }
