@@ -24,6 +24,12 @@ struct BRAgent {
   float vx = 0, vy = 0;
   float angle = 0; // Facing direction (radians, CCW from +X)
 
+  // Cached trig values (precomputed once per step to avoid repeated cos/sin)
+  float cosAngle = 1.0f;    // cos(angle) for forward direction
+  float sinAngle = 0.0f;    // sin(angle) for forward direction
+  float cosNegAngle = 1.0f; // cos(-angle) for local frame rotation
+  float sinNegAngle = 0.0f; // sin(-angle) for local frame rotation
+
   // Combat state
   float health = 100.0f;
   float reloadTimer = 0.0f;

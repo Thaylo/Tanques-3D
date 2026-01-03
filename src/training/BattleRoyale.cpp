@@ -88,8 +88,9 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
                     });
 
   // Populate enemy inputs (3 closest) - ALL IN AGENT'S LOCAL FRAME
-  float cosAngle = std::cos(-angle); // Rotation matrix to local frame
-  float sinAngle = std::sin(-angle);
+  // Use CACHED trig values (precomputed in step())
+  float localCos = cosNegAngle;
+  float localSin = sinNegAngle;
 
   for (int e = 0; e < topK; ++e) {
     const auto &enemy = allAgents[enemyDists[e].idx];
@@ -100,14 +101,14 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
     float dist = std::sqrt(enemyDists[e].distSq);
 
     // Transform position to local frame (forward = +X, left = +Y)
-    float localX = dx * cosAngle - dy * sinAngle; // Forward/back
-    float localY = dx * sinAngle + dy * cosAngle; // Left/right
+    float localX = dx * localCos - dy * localSin; // Forward/back
+    float localY = dx * localSin + dy * localCos; // Left/right
 
     // Transform enemy velocity to local frame
     float localVx =
-        enemy.vx * cosAngle - enemy.vy * sinAngle; // Forward component
+        enemy.vx * localCos - enemy.vy * localSin; // Forward component
     float localVy =
-        enemy.vx * sinAngle + enemy.vy * cosAngle; // Sideways component
+        enemy.vx * localSin + enemy.vy * localCos; // Sideways component
 
     int base = e * 6;
     // Position: localX > 0 means enemy is ahead, localY > 0 means to the left
@@ -164,12 +165,12 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
 
   // =============================================================
   // ZONE CENTER POSITION (self-centered local coordinates)
-  // Rotates with agent's facing direction
+  // Rotates with agent's facing direction - uses CACHED trig
   // =============================================================
-  float cosA = std::cos(-angle); // Rotation to local frame
-  float sinA = std::sin(-angle);
-  float localZoneX = dzX * cosA - dzY * sinA; // Transform to local X
-  float localZoneY = dzX * sinA + dzY * cosA; // Transform to local Y
+  float localZoneX =
+      dzX * cosNegAngle - dzY * sinNegAngle; // Transform to local X
+  float localZoneY =
+      dzX * sinNegAngle + dzY * cosNegAngle; // Transform to local Y
 
   // Normalize by max distance (arena diagonal ~566 for 800x800)
   float maxDist = 600.0f;
@@ -323,7 +324,7 @@ bool BattleRoyaleArena::step(float dt) {
     agent.timeAlive = elapsed;
     agent.wantsToShoot = false;
 
-    // Get inputs (still O(N) but runs in parallel)
+    // Get inputs (uses cached trig from previous step, runs in parallel)
     auto input = agent.getInputs(agents_, zoneX, zoneY, zoneRadius,
                                  zoneShrinkTimer, maxZoneRadius);
 
@@ -336,9 +337,15 @@ bool BattleRoyaleArena::step(float dt) {
     // Apply turning
     agent.angle += turnDir * TURN_RATE * dt;
 
-    // Apply acceleration (when throttle > 0)
-    float ax = std::cos(agent.angle) * throttle * ACCELERATION;
-    float ay = std::sin(agent.angle) * throttle * ACCELERATION;
+    // CACHE TRIG VALUES (precompute once, use many times)
+    agent.cosAngle = std::cos(agent.angle);
+    agent.sinAngle = std::sin(agent.angle);
+    agent.cosNegAngle = agent.cosAngle;  // cos(-x) = cos(x)
+    agent.sinNegAngle = -agent.sinAngle; // sin(-x) = -sin(x)
+
+    // Apply acceleration using CACHED values
+    float ax = agent.cosAngle * throttle * ACCELERATION;
+    float ay = agent.sinAngle * throttle * ACCELERATION;
     agent.vx += ax * dt;
     agent.vy += ay * dt;
 
