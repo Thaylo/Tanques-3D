@@ -9,15 +9,15 @@
 
 namespace Training {
 
-// Physics constants
-constexpr float MAX_SPEED = 25.0f;
-constexpr float ACCELERATION = 50.0f;
-constexpr float TURN_RATE = 2.5f;
-constexpr float FRICTION = 25.0f; // High friction - tanks grip the ground
-constexpr float PROJECTILE_SPEED = 600.0f;
-constexpr float PROJECTILE_RANGE = 100.0f;
-constexpr float PROJECTILE_DAMAGE = 25.0f;
-constexpr float RELOAD_TIME = 1.0f;
+// Physics constants - OPTIMIZED FOR SPEED
+constexpr float MAX_SPEED = 40.0f;         // Faster tanks
+constexpr float ACCELERATION = 80.0f;      // Snappier movement
+constexpr float TURN_RATE = 3.5f;          // Faster aiming
+constexpr float FRICTION = 50.0f;          // Instant stops
+constexpr float PROJECTILE_SPEED = 800.0f; // Near instant hits
+constexpr float PROJECTILE_RANGE = 150.0f; // Longer range
+constexpr float PROJECTILE_DAMAGE = 34.0f; // One-shot kills
+constexpr float RELOAD_TIME = 0.5f;        // Faster fire rate
 
 // ============== BRAgent ==============
 
@@ -195,15 +195,15 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
-  // Initialize octree for 500x500 arena (with Z for future 3D)
+  // Initialize octree for 300x300 arena
   octree_ = std::make_unique<Spatial::Octree<size_t>>(
-      Spatial::AABB(-250, -250, -100, 250, 250, 100));
+      Spatial::AABB(-150, -150, -100, 150, 150, 100));
 }
 
 void BattleRoyaleArena::reset() {
   zone_ = SafeZone();
-  zone_.radius = 250.0f; // 500x500 arena
-  zone_.targetRadius = 250.0f;
+  zone_.radius = 150.0f; // 300x300 arena
+  zone_.targetRadius = 150.0f;
   projectiles_.clear();
   elapsedTime_ = 0;
   roundOver_ = false;
@@ -299,7 +299,7 @@ bool BattleRoyaleArena::step(float dt) {
   float zoneY = zone_.centerY;
   float zoneRadius = zone_.radius;
   float zoneShrinkTimer = zone_.shrinkTimer;
-  float maxZoneRadius = 250.0f;
+  float maxZoneRadius = 150.0f;
   float elapsed = elapsedTime_;
 
   // PHASE 2: GCD parallel agent processing
