@@ -325,14 +325,14 @@ bool BattleRoyaleArena::step(float dt) {
     float throttle = output[1] * 1.5f - 0.5f; // [-0.5, 1]
     float shouldShoot = output[2];            // [0, 1] threshold
 
-    // STAMINA SYSTEM: turning costs stamina, shooting requires it
+    // STAMINA: light cost for turning, prevents INFINITE spinning but allows
+    // maneuvers
     float turnAmount = std::abs(turnDir);
-    float staminaCost = turnAmount * 20.0f * dt; // Turning costs stamina
-    agent.stamina -= staminaCost;
+    agent.stamina -= turnAmount * 5.0f * dt; // Reduced from 20 to 5
 
-    // Regenerate stamina when not turning much
-    if (turnAmount < 0.3f) {
-      agent.stamina += 15.0f * dt; // Regen when mostly still
+    // Fast regen when not spinning at max
+    if (turnAmount < 0.7f) {
+      agent.stamina += 25.0f * dt; // Increased from 15 to 25
     }
     agent.stamina = std::clamp(agent.stamina, 0.0f, 100.0f);
 
