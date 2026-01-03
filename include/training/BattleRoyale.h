@@ -28,6 +28,9 @@ struct BRAgent {
   float health = 100.0f;
   float reloadTimer = 0.0f;
 
+  // Pending projectile for thread-safe parallel processing
+  bool wantsToShoot = false; // Set by parallel NN, collected sequentially
+
   // Neural network brain
   AI::BattleRoyaleNN *brain = nullptr;
 

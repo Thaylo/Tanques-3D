@@ -292,7 +292,6 @@ bool BattleRoyaleArena::step(float dt) {
 
   // =====================================================
   // OCTREE REBUILD - O(N) insert for O(log N) queries
-  // Future-proofed for 3D terrain
   // =====================================================
   octree_->clear();
   for (size_t i = 0; i < agents_.size(); ++i) {
@@ -302,13 +301,84 @@ bool BattleRoyaleArena::step(float dt) {
   }
 
   // =====================================================
-  // AGENT PROCESSING
-  // Note: BLAS NN forward + optimized getInputs provides ~10-50x speedup
+  // GCD PARALLEL AGENT PROCESSING (M1 8-core optimized)
+  // Each agent: getInputs + NN forward + movement
+  // =====================================================
+  dispatch_queue_t queue =
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
+
+  // Capture variables for block
+  float zoneX = zone_.centerX;
+  float zoneY = zone_.centerY;
+  float zoneRadius = zone_.radius;
+  float zoneShrinkTimer = zone_.shrinkTimer;
+  float maxZoneRadius = 400.0f;
+  float elapsed = elapsedTime_;
+
+  dispatch_apply(agents_.size(), queue, ^(size_t i) {
+    BRAgent &agent = agents_[i];
+    if (!agent.alive)
+      return;
+
+    agent.timeAlive = elapsed;
+    agent.wantsToShoot = false;
+
+    // Get inputs (still O(N) but runs in parallel)
+    auto input = agent.getInputs(agents_, zoneX, zoneY, zoneRadius,
+                                 zoneShrinkTimer, maxZoneRadius);
+
+    // NN forward pass (BLAS accelerated)
+    auto output = agent.brain->forward(input);
+    float turnDir = output[0];
+    float throttle = output[1];
+    float shouldShoot = output[2];
+
+    // Apply turning
+    agent.angle += turnDir * TURN_RATE * dt;
+
+    // Apply acceleration
+    float ax = std::cos(agent.angle) * throttle * ACCELERATION;
+    float ay = std::sin(agent.angle) * throttle * ACCELERATION;
+    agent.vx += ax * dt;
+    agent.vy += ay * dt;
+
+    // Clamp speed
+    float speed = std::sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
+    if (speed > MAX_SPEED) {
+      agent.vx = agent.vx / speed * MAX_SPEED;
+      agent.vy = agent.vy / speed * MAX_SPEED;
+    }
+
+    // Update position
+    agent.x += agent.vx * dt;
+    agent.y += agent.vy * dt;
+
+    // Reload timer
+    agent.reloadTimer = std::max(0.0f, agent.reloadTimer - dt);
+
+    // Mark for shooting (collected sequentially later)
+    if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
+      agent.wantsToShoot = true;
+    }
+  });
+
+  // =====================================================
+  // SEQUENTIAL: Collect projectiles (not thread-safe)
   // =====================================================
   for (size_t i = 0; i < agents_.size(); ++i) {
-    if (agents_[i].alive) {
-      agents_[i].timeAlive = elapsedTime_;
-      processAgent(agents_[i], dt);
+    BRAgent &agent = agents_[i];
+    if (agent.alive && agent.wantsToShoot) {
+      agent.shotsFired++;
+      agent.reloadTimer = RELOAD_TIME;
+
+      Projectile proj;
+      proj.x = agent.x;
+      proj.y = agent.y;
+      proj.vx = std::cos(agent.angle) * PROJECTILE_SPEED;
+      proj.vy = std::sin(agent.angle) * PROJECTILE_SPEED;
+      proj.lifetime = PROJECTILE_RANGE / PROJECTILE_SPEED;
+      proj.shooterId = static_cast<int>(i);
+      projectiles_.push_back(proj);
     }
   }
 
