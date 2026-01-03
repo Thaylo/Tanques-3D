@@ -205,14 +205,17 @@ private:
   }
 
   void startNewRound() {
-    arena_.reset();
-
-    // Assign brains to agents
+    // CRITICAL: Assign brains BEFORE reset() because reset() calls
+    // resetHiddenState() After evolve(), population_ has new entries - must
+    // update pointers first!
     auto &agents = arena_.getAgentsMutable();
     for (size_t i = 0; i < agents.size(); ++i) {
       agents[i].brain = &population_[i];
       agents[i].color = getColorFromNN(population_[i]);
     }
+
+    // Now reset is safe - brain pointers are valid
+    arena_.reset();
   }
 
   uint32_t getColorFromNN(const BattleRoyaleNN &nn) {
