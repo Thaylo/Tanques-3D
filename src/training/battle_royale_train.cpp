@@ -2,12 +2,14 @@
  * battle_royale_train.cpp - Visual Battle Royale training
  *
  * Watch 50 tanks fight from above while evolving AI.
+ * Features:
+ *   - 100x speed with 50 tanks, linear to 1x with 1 tank
+ *   - Cumulative learning (auto-save/load best networks)
  */
 
 #include "training/BattleRoyale.h"
 #include <SDL2/SDL.h>
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -23,16 +25,32 @@ constexpr int RANDOM_INJECT = 5;
 constexpr float MUTATION_RATE = 0.15f;
 constexpr float MUTATION_STRENGTH = 0.4f;
 
+// Speed scaling
+constexpr float MAX_SIM_SPEED = 100.0f; // Speed when 50 tanks
+constexpr float MIN_SIM_SPEED = 1.0f;   // Speed when 1 tank
+
 // Visualization
 constexpr int WINDOW_SIZE = 800;
 constexpr float WORLD_SIZE = 400.0f;
+
+// Save file
+const char *SAVE_FILE = "battle_royale_best.bin";
+const char *POPULATION_FILE = "battle_royale_population.bin";
 
 class BattleRoyaleTrainer {
 public:
   BattleRoyaleTrainer() {
     population_.resize(POPULATION_SIZE);
-    for (auto &nn : population_) {
-      nn.randomize(rng_);
+
+    // Try to load saved population for cumulative learning
+    if (!loadPopulation()) {
+      std::cout << "No saved population, starting fresh" << std::endl;
+      for (auto &nn : population_) {
+        nn.randomize(rng_);
+      }
+    } else {
+      std::cout << "Loaded saved population - continuing training!"
+                << std::endl;
     }
   }
 
@@ -42,7 +60,6 @@ public:
 
     bool running = true;
     bool paused = false;
-    float simSpeed = 1.0f;
 
     while (running) {
       // Handle events
@@ -58,42 +75,58 @@ public:
           case SDLK_SPACE:
             paused = !paused;
             break;
-          case SDLK_EQUALS:
-            simSpeed = std::min(10.0f, simSpeed * 2.0f);
-            break;
-          case SDLK_MINUS:
-            simSpeed = std::max(0.25f, simSpeed / 2.0f);
-            break;
           case SDLK_s:
             saveBest();
+            savePopulation();
             break;
           }
         }
       }
 
       if (!paused) {
-        // Run simulation steps
-        float dt = 0.02f * simSpeed;
+        // Calculate adaptive speed based on alive count
+        int alive = arena_.getAliveCount();
+        float speedFactor = calculateSpeedFactor(alive);
 
-        if (!arena_.isRoundOver()) {
-          arena_.step(dt);
-        } else {
-          // Evolve and start new round
-          evolve();
-          startNewRound();
-          generation_++;
+        // Run multiple simulation steps per frame at high speed
+        int stepsPerFrame = static_cast<int>(std::ceil(speedFactor / 10.0f));
+        stepsPerFrame = std::max(1, std::min(stepsPerFrame, 20));
 
-          std::cout << "Gen " << generation_ << " | Best: " << bestFitness_
-                    << " | Avg: " << avgFitness_ << std::endl;
+        float dt = 0.02f * (speedFactor / stepsPerFrame);
+
+        for (int step = 0; step < stepsPerFrame; ++step) {
+          if (!arena_.isRoundOver()) {
+            arena_.step(dt);
+          } else {
+            // Evolve and start new round
+            evolve();
+            startNewRound();
+            generation_++;
+
+            // Auto-save every generation for cumulative learning
+            savePopulation();
+
+            std::cout << "Gen " << generation_ << " | Best: " << bestFitness_
+                      << " | Avg: " << avgFitness_ << std::endl;
+            break;
+          }
         }
+
+        currentSpeed_ = speedFactor;
       }
 
       // Render
       render();
 
-      // Cap frame rate
-      SDL_Delay(16);
+      // Cap frame rate (faster render when fewer tanks)
+      int delay = (currentSpeed_ > 10.0f) ? 1 : 16;
+      SDL_Delay(delay);
     }
+
+    // Save on exit
+    savePopulation();
+    saveBest();
+    std::cout << "Training saved. Resume anytime!" << std::endl;
 
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);
@@ -111,6 +144,19 @@ private:
   int generation_ = 0;
   float bestFitness_ = 0;
   float avgFitness_ = 0;
+  float currentSpeed_ = 1.0f;
+
+  float calculateSpeedFactor(int aliveCount) {
+    // Linear interpolation: 50 tanks = 100x, 1 tank = 1x
+    // speed = 1 + (100 - 1) * (alive - 1) / (50 - 1)
+    if (aliveCount <= 1)
+      return MIN_SIM_SPEED;
+    if (aliveCount >= POPULATION_SIZE)
+      return MAX_SIM_SPEED;
+
+    float t = static_cast<float>(aliveCount - 1) / (POPULATION_SIZE - 1);
+    return MIN_SIM_SPEED + (MAX_SIM_SPEED - MIN_SIM_SPEED) * t;
+  }
 
   bool initSDL() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -144,7 +190,6 @@ private:
   }
 
   uint32_t getColorFromNN(const BattleRoyaleNN &nn) {
-    // Color based on some weight characteristics
     float w1 = std::abs(nn.weights1[0]) * 255;
     float w2 = std::abs(nn.weights2[0]) * 255;
     float w3 = std::abs(nn.weights3[0]) * 255;
@@ -157,13 +202,11 @@ private:
   }
 
   void evolve() {
-    // Copy fitness from agents to networks
     auto &agents = arena_.getAgentsMutable();
     for (size_t i = 0; i < agents.size(); ++i) {
       population_[i].fitness = agents[i].getFitness();
     }
 
-    // Sort by fitness
     std::sort(population_.begin(), population_.end(),
               [](const BattleRoyaleNN &a, const BattleRoyaleNN &b) {
                 return a.fitness > b.fitness;
@@ -175,16 +218,15 @@ private:
       avgFitness_ += nn.fitness;
     avgFitness_ /= population_.size();
 
-    // Create new population
     std::vector<BattleRoyaleNN> newPop;
     newPop.reserve(POPULATION_SIZE);
 
-    // Elites
+    // Elites survive unchanged
     for (int i = 0; i < ELITE_COUNT; ++i) {
       newPop.push_back(population_[i]);
     }
 
-    // Random injection
+    // Random injection for diversity
     for (int i = 0; i < RANDOM_INJECT; ++i) {
       BattleRoyaleNN fresh;
       fresh.randomize(rng_);
@@ -208,14 +250,51 @@ private:
 
   void saveBest() {
     auto data = population_[0].serialize();
-    std::ofstream file("battle_royale_best.bin", std::ios::binary);
+    std::ofstream file(SAVE_FILE, std::ios::binary);
     file.write(reinterpret_cast<const char *>(data.data()),
                data.size() * sizeof(float));
-    std::cout << "Saved best to battle_royale_best.bin" << std::endl;
+    std::cout << "Saved best to " << SAVE_FILE << std::endl;
+  }
+
+  void savePopulation() {
+    std::ofstream file(POPULATION_FILE, std::ios::binary);
+    if (!file)
+      return;
+
+    // Write generation number
+    file.write(reinterpret_cast<const char *>(&generation_),
+               sizeof(generation_));
+
+    // Write all networks
+    for (const auto &nn : population_) {
+      auto data = nn.serialize();
+      file.write(reinterpret_cast<const char *>(data.data()),
+                 data.size() * sizeof(float));
+    }
+  }
+
+  bool loadPopulation() {
+    std::ifstream file(POPULATION_FILE, std::ios::binary);
+    if (!file)
+      return false;
+
+    // Read generation number
+    file.read(reinterpret_cast<char *>(&generation_), sizeof(generation_));
+
+    // Read all networks
+    std::vector<float> data(BR_TOTAL_WEIGHTS);
+    for (auto &nn : population_) {
+      file.read(reinterpret_cast<char *>(data.data()),
+                data.size() * sizeof(float));
+      if (!file)
+        return false;
+      nn.deserialize(data);
+    }
+
+    return true;
   }
 
   void render() {
-    // Clear - dark background
     SDL_SetRenderDrawColor(renderer_, 20, 20, 30, 255);
     SDL_RenderClear(renderer_);
 
@@ -227,7 +306,6 @@ private:
     drawCircle(zone.centerX * scale + offset, zone.centerY * scale + offset,
                zone.radius * scale, 50, 200, 50);
 
-    // Draw danger zone (shrinking target)
     if (zone.radius > zone.targetRadius) {
       drawCircle(zone.centerX * scale + offset, zone.centerY * scale + offset,
                  zone.targetRadius * scale, 200, 100, 50);
@@ -254,7 +332,6 @@ private:
       uint8_t g = (agent.color >> 8) & 0xFF;
       uint8_t b = agent.color & 0xFF;
 
-      // Health affects brightness
       float hpFactor = agent.health / 100.0f;
       r = static_cast<uint8_t>(r * hpFactor);
       g = static_cast<uint8_t>(g * hpFactor);
@@ -262,46 +339,37 @@ private:
 
       SDL_SetRenderDrawColor(renderer_, r, g, b, 255);
 
-      // Tank body
       SDL_Rect rect = {ax - 4, ay - 4, 8, 8};
       SDL_RenderFillRect(renderer_, &rect);
 
-      // Direction indicator
       int fx = ax + static_cast<int>(std::cos(agent.angle) * 8);
       int fy = ay + static_cast<int>(std::sin(agent.angle) * 8);
       SDL_RenderDrawLine(renderer_, ax, ay, fx, fy);
     }
 
-    // Draw HUD
     renderHUD();
-
     SDL_RenderPresent(renderer_);
   }
 
   void drawCircle(float cx, float cy, float r, int red, int green, int blue) {
     SDL_SetRenderDrawColor(renderer_, red, green, blue, 100);
-
     for (int i = 0; i < 60; ++i) {
       float a1 = i * 2 * M_PI / 60;
       float a2 = (i + 1) * 2 * M_PI / 60;
-
       int x1 = static_cast<int>(cx + std::cos(a1) * r);
       int y1 = static_cast<int>(cy + std::sin(a1) * r);
       int x2 = static_cast<int>(cx + std::cos(a2) * r);
       int y2 = static_cast<int>(cy + std::sin(a2) * r);
-
       SDL_RenderDrawLine(renderer_, x1, y1, x2, y2);
     }
   }
 
   void renderHUD() {
-    // Simple text overlay - generation and alive count
-    // (SDL2 text requires SDL_ttf, so we just use the window title)
-    char title[128];
+    char title[256];
     snprintf(title, sizeof(title),
-             "Gen %d | Alive: %d | Best: %.0f | Time: %.1fs | [SPACE]=Pause "
-             "[+/-]=Speed [S]=Save",
-             generation_, arena_.getAliveCount(), bestFitness_,
+             "Gen %d | Alive: %d/50 | Speed: %.0fx | Best: %.0f | Time: %.1fs "
+             "| [SPACE]=Pause [S]=Save",
+             generation_, arena_.getAliveCount(), currentSpeed_, bestFitness_,
              arena_.getElapsedTime());
     SDL_SetWindowTitle(window_, title);
   }
@@ -309,11 +377,14 @@ private:
 
 int main() {
   std::cout << "=== Battle Royale AI Training ===" << std::endl;
+  std::cout << "Features:" << std::endl;
+  std::cout << "  - 100x speed at start, 1x when 1 tank left" << std::endl;
+  std::cout << "  - Cumulative learning (auto-saves, resumes)" << std::endl;
+  std::cout << std::endl;
   std::cout << "Controls:" << std::endl;
   std::cout << "  SPACE: Pause/Resume" << std::endl;
-  std::cout << "  +/-: Speed up/slow down" << std::endl;
-  std::cout << "  S: Save best network" << std::endl;
-  std::cout << "  ESC: Exit" << std::endl;
+  std::cout << "  S: Save progress" << std::endl;
+  std::cout << "  ESC: Exit (auto-saves)" << std::endl;
   std::cout << std::endl;
 
   BattleRoyaleTrainer trainer;
