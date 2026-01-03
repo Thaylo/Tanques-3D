@@ -32,6 +32,8 @@ struct BRAgent {
 
   // Combat state
   float health = 100.0f;
+  float stamina =
+      100.0f; // Depletes when turning/shooting, regenerates when idle
   float reloadTimer = 0.0f;
 
   // Pending projectile for thread-safe parallel processing

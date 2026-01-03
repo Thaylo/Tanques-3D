@@ -27,6 +27,7 @@ void BRAgent::reset(float startX, float startY, float startAngle) {
   angle = startAngle;
   vx = vy = 0;
   health = 100.0f;
+  stamina = 100.0f;
   reloadTimer = 0.0f;
   damageDealt = 0.0f;
   kills = 0;
@@ -324,6 +325,17 @@ bool BattleRoyaleArena::step(float dt) {
     float throttle = output[1] * 1.5f - 0.5f; // [-0.5, 1]
     float shouldShoot = output[2];            // [0, 1] threshold
 
+    // STAMINA SYSTEM: turning costs stamina, shooting requires it
+    float turnAmount = std::abs(turnDir);
+    float staminaCost = turnAmount * 20.0f * dt; // Turning costs stamina
+    agent.stamina -= staminaCost;
+
+    // Regenerate stamina when not turning much
+    if (turnAmount < 0.3f) {
+      agent.stamina += 15.0f * dt; // Regen when mostly still
+    }
+    agent.stamina = std::clamp(agent.stamina, 0.0f, 100.0f);
+
     agent.angle += turnDir * TURN_RATE * dt;
     agent.cosAngle = std::cos(agent.angle);
     agent.sinAngle = std::sin(agent.angle);
@@ -351,8 +363,11 @@ bool BattleRoyaleArena::step(float dt) {
     agent.y += agent.vy * dt;
     agent.reloadTimer = std::max(0.0f, agent.reloadTimer - dt);
 
-    if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
+    // Shooting requires stamina (20 per shot)
+    if (shouldShoot > 0.5f && agent.reloadTimer <= 0 &&
+        agent.stamina >= 20.0f) {
       agent.wantsToShoot = true;
+      agent.stamina -= 20.0f; // Shooting costs stamina
     }
   });
 
