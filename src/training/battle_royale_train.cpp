@@ -60,6 +60,7 @@ public:
 
     bool running = true;
     bool paused = false;
+    bool headless = false; // Time travel mode - no rendering, max speed
 
     while (running) {
       // Handle events
@@ -75,6 +76,12 @@ public:
           case SDLK_SPACE:
             paused = !paused;
             break;
+          case SDLK_h:
+            headless = !headless;
+            std::cout << (headless ? ">>> TIME TRAVEL MODE ON <<<"
+                                   : ">>> Normal mode <<<")
+                      << std::endl;
+            break;
           case SDLK_s:
             saveBest();
             savePopulation();
@@ -84,43 +91,75 @@ public:
       }
 
       if (!paused) {
-        // Calculate adaptive speed based on alive count
-        int alive = arena_.getAliveCount();
-        float speedFactor = calculateSpeedFactor(alive);
+        if (headless) {
+          // TIME TRAVEL MODE: Run as fast as possible
+          // Run 1000 steps per frame, no adaptive speed
+          float dt = 0.05f; // Large timestep for speed
 
-        // Run multiple simulation steps per frame at high speed
-        int stepsPerFrame = static_cast<int>(std::ceil(speedFactor / 10.0f));
-        stepsPerFrame = std::max(1, std::min(stepsPerFrame, 20));
+          for (int step = 0; step < 1000; ++step) {
+            if (!arena_.isRoundOver()) {
+              arena_.step(dt);
+            } else {
+              evolve();
+              startNewRound();
+              generation_++;
 
-        float dt = 0.02f * (speedFactor / stepsPerFrame);
-
-        for (int step = 0; step < stepsPerFrame; ++step) {
-          if (!arena_.isRoundOver()) {
-            arena_.step(dt);
-          } else {
-            // Evolve and start new round
-            evolve();
-            startNewRound();
-            generation_++;
-
-            // Auto-save every generation for cumulative learning
-            savePopulation();
-
-            std::cout << "Gen " << generation_ << " | Best: " << bestFitness_
-                      << " | Avg: " << avgFitness_ << std::endl;
-            break;
+              // Save every 10 generations in headless mode
+              if (generation_ % 10 == 0) {
+                savePopulation();
+                std::cout << "Gen " << generation_
+                          << " | Best: " << bestFitness_
+                          << " | Avg: " << avgFitness_ << std::endl;
+              }
+            }
           }
-        }
+          currentSpeed_ = 9999.0f;
 
-        currentSpeed_ = speedFactor;
+        } else {
+          // Normal visual mode with adaptive speed
+          int alive = arena_.getAliveCount();
+          float speedFactor = calculateSpeedFactor(alive);
+
+          int stepsPerFrame = static_cast<int>(std::ceil(speedFactor / 10.0f));
+          stepsPerFrame = std::max(1, std::min(stepsPerFrame, 20));
+
+          float dt = 0.02f * (speedFactor / stepsPerFrame);
+
+          for (int step = 0; step < stepsPerFrame; ++step) {
+            if (!arena_.isRoundOver()) {
+              arena_.step(dt);
+            } else {
+              evolve();
+              startNewRound();
+              generation_++;
+              savePopulation();
+
+              std::cout << "Gen " << generation_ << " | Best: " << bestFitness_
+                        << " | Avg: " << avgFitness_ << std::endl;
+              break;
+            }
+          }
+
+          currentSpeed_ = speedFactor;
+        }
       }
 
-      // Render
-      render();
+      // Render (minimal in headless mode)
+      if (headless) {
+        // Just update title, no actual rendering
+        char title[256];
+        snprintf(title, sizeof(title),
+                 "[TIME TRAVEL] Gen %d | Alive: %d/50 | Best: %.0f | [H]=Stop",
+                 generation_, arena_.getAliveCount(), bestFitness_);
+        SDL_SetWindowTitle(window_, title);
+        SDL_Delay(1); // Minimal delay to keep responsive
+      } else {
+        render();
 
-      // Cap frame rate (faster render when fewer tanks)
-      int delay = (currentSpeed_ > 10.0f) ? 1 : 16;
-      SDL_Delay(delay);
+        // Cap frame rate (faster render when fewer tanks)
+        int delay = (currentSpeed_ > 10.0f) ? 1 : 16;
+        SDL_Delay(delay);
+      }
     }
 
     // Save on exit
