@@ -103,6 +103,7 @@ set(TRAINING_SOURCES
     src/training/TrainingArena.cpp
     src/training/EvolutionManager.cpp
     src/training/BattleRoyale.cpp
+    src/training/CurriculumArena.cpp
     src/ai/BattleRoyaleNN.cpp
 )
 
@@ -133,6 +134,14 @@ if(SDL2_FOUND)
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
     message(STATUS "Battle Royale visual trainer enabled (SDL2 found)")
+
+    # Curriculum Training (single-agent skill lab)
+    add_executable(CurriculumTrain src/training/curriculum_train.cpp)
+    target_link_libraries(CurriculumTrain PRIVATE Tanques3DLib SDL2::SDL2)
+    set_target_properties(CurriculumTrain PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    message(STATUS "Curriculum trainer enabled")
 else()
     message(STATUS "Battle Royale visual trainer disabled (SDL2 not found)")
 endif()
