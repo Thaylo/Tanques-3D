@@ -282,54 +282,44 @@ bool BattleRoyaleArena::step(float dt) {
   }
 
   // =====================================================
-  // GCD PARALLEL AGENT PROCESSING (M1 8-core optimized)
-  // Each agent: getInputs + NN forward + movement
+  // SEQUENTIAL AGENT PROCESSING
+  // (GCD removed: race condition with RNN hidden state)
+  // 25 agents is fast enough without parallelism
   // =====================================================
-  dispatch_queue_t queue =
-      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
-
-  // Capture variables for block
   float zoneX = zone_.centerX;
   float zoneY = zone_.centerY;
   float zoneRadius = zone_.radius;
   float zoneShrinkTimer = zone_.shrinkTimer;
-  float maxZoneRadius = 400.0f;
-  float elapsed = elapsedTime_;
+  float maxZoneRadius = 150.0f;
 
-  dispatch_apply(agents_.size(), queue, ^(size_t i) {
+  for (size_t i = 0; i < agents_.size(); ++i) {
     BRAgent &agent = agents_[i];
     if (!agent.alive)
-      return;
+      continue;
 
-    agent.timeAlive = elapsed;
+    agent.timeAlive = elapsedTime_;
     agent.wantsToShoot = false;
 
-    // Get inputs (uses cached trig from previous step, runs in parallel)
     auto input = agent.getInputs(agents_, zoneX, zoneY, zoneRadius,
                                  zoneShrinkTimer, maxZoneRadius);
 
-    // NN forward pass (BLAS accelerated)
     auto output = agent.brain->forward(input);
     float turnDir = output[0];
     float throttle = output[1];
     float shouldShoot = output[2];
 
-    // Apply turning
     agent.angle += turnDir * TURN_RATE * dt;
 
-    // CACHE TRIG VALUES (precompute once, use many times)
     agent.cosAngle = std::cos(agent.angle);
     agent.sinAngle = std::sin(agent.angle);
-    agent.cosNegAngle = agent.cosAngle;  // cos(-x) = cos(x)
-    agent.sinNegAngle = -agent.sinAngle; // sin(-x) = -sin(x)
+    agent.cosNegAngle = agent.cosAngle;
+    agent.sinNegAngle = -agent.sinAngle;
 
-    // Apply acceleration using CACHED values
     float ax = agent.cosAngle * throttle * ACCELERATION;
     float ay = agent.sinAngle * throttle * ACCELERATION;
     agent.vx += ax * dt;
     agent.vy += ay * dt;
 
-    // Apply ground friction (tanks stop when not accelerating)
     float speed = std::sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
     if (speed > 0.01f) {
       float frictionDecel = FRICTION * dt;
@@ -340,24 +330,19 @@ bool BattleRoyaleArena::step(float dt) {
       speed = newSpeed;
     }
 
-    // Clamp max speed
     if (speed > MAX_SPEED) {
       agent.vx = agent.vx / speed * MAX_SPEED;
       agent.vy = agent.vy / speed * MAX_SPEED;
     }
 
-    // Update position
     agent.x += agent.vx * dt;
     agent.y += agent.vy * dt;
-
-    // Reload timer
     agent.reloadTimer = std::max(0.0f, agent.reloadTimer - dt);
 
-    // Mark for shooting (collected sequentially later)
     if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
       agent.wantsToShoot = true;
     }
-  });
+  }
 
   // =====================================================
   // SEQUENTIAL: Collect projectiles (not thread-safe)
