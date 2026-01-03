@@ -102,6 +102,8 @@ endif()
 set(TRAINING_SOURCES
     src/training/TrainingArena.cpp
     src/training/EvolutionManager.cpp
+    src/training/BattleRoyale.cpp
+    src/ai/BattleRoyaleNN.cpp
 )
 
 # Library for testing (excludes main and OpenGL)
@@ -121,6 +123,19 @@ target_link_libraries(TrainAI PRIVATE Tanques3DLib)
 set_target_properties(TrainAI PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+
+# Battle Royale visual training
+find_package(SDL2 QUIET)
+if(SDL2_FOUND) 
+    add_executable(BattleRoyaleTrain src/training/battle_royale_train.cpp)
+    target_link_libraries(BattleRoyaleTrain PRIVATE Tanques3DLib SDL2::SDL2)
+    set_target_properties(BattleRoyaleTrain PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    message(STATUS "Battle Royale visual trainer enabled (SDL2 found)")
+else()
+    message(STATUS "Battle Royale visual trainer disabled (SDL2 not found)")
+endif()
 
 # Main executable
 add_executable(Tanques3D src/game/Main.cpp)
