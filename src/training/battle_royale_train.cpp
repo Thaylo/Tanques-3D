@@ -133,11 +133,19 @@ public:
         }
       }
 
-      // Always render (with speed indicator)
-      render();
-
-      // Frame delay based on mode
-      SDL_Delay(watchMode ? 16 : 1);
+      // Render only in watch mode - max speed skips for performance
+      if (watchMode) {
+        render();
+        SDL_Delay(16);
+      } else {
+        // Just update title for progress feedback, no rendering
+        char title[256];
+        snprintf(title, sizeof(title),
+                 "[MAX SPEED] Gen %d | Alive: %d/400 | Best: %.0f", generation_,
+                 arena_.getAliveCount(), bestFitness_);
+        SDL_SetWindowTitle(window_, title);
+        SDL_Delay(1); // Minimal delay for event processing
+      }
     }
 
     // Save on exit
