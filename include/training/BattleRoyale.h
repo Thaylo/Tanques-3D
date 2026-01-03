@@ -73,7 +73,7 @@ struct SafeZone {
   float shrinkSpeed = 10.0f; // meters per second when shrinking
   float shrinkTimer = 5.0f;  // seconds until next shrink
   float shrinkInterval = 5.0f;
-  float damagePerSecond = 2.0f;
+  float damagePerSecond = 20.0f; // 10x damage for fast attrition
   float minRadius = 20.0f;
 
   void update(float dt);
