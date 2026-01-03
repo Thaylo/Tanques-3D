@@ -64,6 +64,14 @@ void EvolutionManager::evolve() {
     newPop.push_back(population_[i]);
   }
 
+  // Random injection - fresh random networks for diversity
+  for (int i = 0;
+       i < randomInject_ && newPop.size() < static_cast<size_t>(popSize); ++i) {
+    AI::NeuralNetwork fresh;
+    fresh.randomize(rng_);
+    newPop.push_back(std::move(fresh));
+  }
+
   // Tournament selection + crossover for the rest
   std::uniform_int_distribution<int> tournamentDist(0, popSize / 2);
 

@@ -35,30 +35,34 @@ void TrainingAgent::reset(float startX, float startY, float startAngle) {
 }
 
 float TrainingAgent::getFitness() const {
-  // AGGRESSIVE FITNESS: Incentivize ranged shooting
+  // PRECISION-FOCUSED FITNESS - penalize spam, reward accuracy
   float fitness = 0.0f;
 
-  // SHOOTING REWARDS (key to evolving shooters)
-  fitness += shotsFired * 10.0f;   // Reward trying to shoot
-  fitness += shotsHit * 50.0f;     // Reward hitting
-  fitness += rangedDamage * 20.0f; // HUGE bonus for ranged damage
+  // SHOOTING: Only reward HITS, penalize MISSES
+  int misses = shotsFired - shotsHit;
+  fitness += shotsHit * 100.0f;    // Big reward for hits
+  fitness -= misses * 20.0f;       // Penalty for misses (discourages spam)
+  fitness += rangedDamage * 30.0f; // Bonus for ranged hits
 
   // Combat rewards
   fitness += kills * 500.0f;     // Kill bonus
-  fitness += damageDealt * 3.0f; // Base damage bonus
+  fitness += damageDealt * 5.0f; // Damage bonus
+
+  // MOVEMENT bonus - encourage exploration and maneuvering
+  float avgSpeed = (survivalTime > 0) ? std::sqrt(vx * vx + vy * vy) : 0;
+  fitness += avgSpeed * 10.0f; // Reward for moving
 
   // Survival
-  fitness += survivalTime * 0.2f;
   if (alive) {
-    fitness += 100.0f;
+    fitness += 200.0f;
   } else {
-    fitness -= 150.0f;
+    fitness -= 100.0f;
   }
 
-  // Accuracy bonus (hit rate)
-  if (shotsFired > 0) {
+  // Accuracy bonus (only if they actually shot)
+  if (shotsFired >= 3) {
     float accuracy = static_cast<float>(shotsHit) / shotsFired;
-    fitness += accuracy * 200.0f; // Reward accuracy
+    fitness += accuracy * 300.0f; // BIG accuracy bonus
   }
 
   return std::max(0.0f, fitness);

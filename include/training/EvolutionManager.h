@@ -43,10 +43,11 @@ private:
   float bestFitness_ = 0;
   float avgFitness_ = 0;
 
-  // Evolution parameters
-  int eliteCount_ = 10;
-  float mutationRate_ = 0.1f;
-  float mutationStrength_ = 0.3f;
+  // Evolution parameters - tuned to prevent premature convergence
+  int eliteCount_ = 5;            // Fewer elites = more exploration
+  int randomInject_ = 10;         // Fresh random networks each generation
+  float mutationRate_ = 0.3f;     // Higher mutation = more diversity
+  float mutationStrength_ = 0.5f; // Stronger mutations
 
   void evolve();
   void sortByFitness();

@@ -39,6 +39,15 @@ void Enemy::controlAction() {
 
     AI::AIDecision decision = aiController_->predict(input);
 
+    // DEBUG: Print every 50 frames
+    static int debugCounter = 0;
+    if (++debugCounter % 50 == 0) {
+      std::cout << "[Enemy] NN: turn=" << decision.turnDirection
+                << " thr=" << decision.throttle
+                << " shoot=" << decision.shouldShoot
+                << " dist=" << distanceToTarget << std::endl;
+    }
+
     // Apply neural network decisions
 
     // Turn: decision.turnDirection is -1 to 1
