@@ -1,8 +1,8 @@
 /**
  * PhysicsWorld.h - High-level physics world manager
  *
+ * Apple Silicon ONLY - no fallbacks.
  * Bridges Metal compute physics with game entities.
- * Manages rigid bodies, forces, and simulation stepping.
  */
 
 #ifndef PHYSICS_WORLD_H
@@ -11,27 +11,23 @@
 #include <memory>
 #include <vector>
 
-#ifdef __APPLE__
-#include "physics/MetalCompute.h"
-#endif
-
 #include "core/Vector.h"
+#include "physics/MetalCompute.h"
 
 namespace Physics {
 
 /**
  * PhysicsWorld - Game-facing physics interface
  *
- * Abstracts Metal compute details and provides simple API
- * for game entities to interact with physics simulation.
+ * Requires Apple Silicon GPU - throws on initialization failure.
  */
 class PhysicsWorld {
 public:
   PhysicsWorld();
   ~PhysicsWorld();
 
-  // Initialize physics system
-  bool initialize();
+  // Initialize physics system - throws on failure
+  void initialize();
 
   // Shutdown physics
   void shutdown();
@@ -58,23 +54,12 @@ public:
   void setGravity(float g);
 
   // Debug
-  bool isGPUAccelerated() const;
+  std::string getDeviceName() const;
   uint32_t getBodyCount() const;
 
 private:
-#ifdef __APPLE__
   std::unique_ptr<MetalCompute> metalCompute_;
   std::vector<RigidBody> bodies_;
-#else
-  // CPU-only fallback for non-Apple platforms
-  struct SimplifiedBody {
-    Vector position;
-    Vector velocity;
-    float mass;
-  };
-  std::vector<SimplifiedBody> bodies_;
-  float gravity_ = 9.81f;
-#endif
 };
 
 } // namespace Physics

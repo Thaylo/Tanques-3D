@@ -1,19 +1,17 @@
 /**
  * MetalCompute.h - Metal Compute Infrastructure for Apple Silicon Physics
  *
- * Provides GPU-accelerated physics using Metal compute shaders.
- * Designed for Apple M1/M2/M3 unified memory architecture.
+ * GPU-accelerated physics using Metal compute shaders.
+ * Apple Silicon ONLY - no fallbacks.
  */
 
 #ifndef METAL_COMPUTE_H
 #define METAL_COMPUTE_H
 
-#ifdef __APPLE__
-
 #include <cstdint>
 #include <memory>
 #include <simd/simd.h>
-#include <string>
+#include <stdexcept>
 #include <vector>
 
 namespace Physics {
@@ -36,7 +34,7 @@ struct alignas(16) RigidBody {
   simd_float3 force;
   float padding2;
   simd_float3 torque;
-  float padding3;
+  float restitution; // Bounciness for collisions
 };
 
 /**
@@ -50,21 +48,29 @@ struct SimulationParams {
 };
 
 /**
- * MetalCompute - Main interface for Metal-accelerated physics
+ * MetalComputeError - Thrown when Metal operations fail
+ */
+class MetalComputeError : public std::runtime_error {
+public:
+  explicit MetalComputeError(const std::string &msg)
+      : std::runtime_error(msg) {}
+};
+
+/**
+ * MetalCompute - Metal-accelerated physics engine
+ *
+ * NO FALLBACKS - requires Apple Silicon GPU
  */
 class MetalCompute {
 public:
   MetalCompute();
   ~MetalCompute();
 
-  // Initialize Metal device and pipelines
-  bool initialize();
+  // Initialize Metal device and pipelines - throws on failure
+  void initialize();
 
   // Shutdown and release resources
   void shutdown();
-
-  // Check if Metal is available
-  bool isAvailable() const;
 
   // Rigid body management
   void setRigidBodies(const std::vector<RigidBody> &bodies);
@@ -79,14 +85,15 @@ public:
   void applyTorque(uint32_t bodyIndex, simd_float3 torque);
   void setGravity(float g);
 
+  // Query GPU info
+  std::string getDeviceName() const;
+
 private:
   std::unique_ptr<MetalContext> context_;
   std::vector<RigidBody> bodies_;
   float gravity_ = 9.81f;
-  bool initialized_ = false;
 };
 
 } // namespace Physics
 
-#endif // __APPLE__
 #endif // METAL_COMPUTE_H

@@ -1,7 +1,8 @@
 /**
  * MetalCompute.mm - Metal Compute Implementation for Apple Silicon
  *
- * Objective-C++ implementation bridging Metal APIs with C++ physics.
+ * GPU-accelerated physics - NO CPU FALLBACKS.
+ * Throws exceptions on failure.
  */
 
 #import <Foundation/Foundation.h>
@@ -24,96 +25,100 @@ struct MetalContext {
   id<MTLComputePipelineState> applyForcesPipeline = nil;
   id<MTLBuffer> bodiesBuffer = nil;
   id<MTLBuffer> paramsBuffer = nil;
+  NSString *deviceName = nil;
 };
 
 MetalCompute::MetalCompute() : context_(std::make_unique<MetalContext>()) {}
 
 MetalCompute::~MetalCompute() { shutdown(); }
 
-bool MetalCompute::initialize() {
+void MetalCompute::initialize() {
   @autoreleasepool {
     // Get default Metal device (Apple Silicon GPU)
     context_->device = MTLCreateSystemDefaultDevice();
     if (!context_->device) {
-      std::cerr << "[MetalCompute] No Metal device available" << std::endl;
-      return false;
+      throw MetalComputeError(
+          "No Metal device available - Apple Silicon required");
     }
 
-    std::cout << "[MetalCompute] Using device: " <<
-        [context_->device.name UTF8String] << std::endl;
+    context_->deviceName = [context_->device.name copy]; // Retain the string
+    std::cout << "[MetalCompute] Device: " << [context_->deviceName UTF8String]
+              << std::endl;
+
+    // Verify this is Apple Silicon (not Intel integrated)
+    if (![context_->device.name containsString:@"Apple"]) {
+      throw MetalComputeError("Apple Silicon GPU required, found: " +
+                              std::string([context_->device.name UTF8String]));
+    }
 
     // Create command queue
     context_->commandQueue = [context_->device newCommandQueue];
     if (!context_->commandQueue) {
-      std::cerr << "[MetalCompute] Failed to create command queue" << std::endl;
-      return false;
+      throw MetalComputeError("Failed to create Metal command queue");
     }
 
-    // Load Metal shader library
+    // Load Metal shader library - compile from source
     NSError *error = nil;
-    NSString *libraryPath = [[NSBundle mainBundle] pathForResource:@"physics"
-                                                            ofType:@"metallib"];
+    NSString *shaderPath = @"assets/shaders/physics.metal";
+    NSString *shaderSource =
+        [NSString stringWithContentsOfFile:shaderPath
+                                  encoding:NSUTF8StringEncoding
+                                     error:&error];
 
-    if (libraryPath) {
-      NSURL *libraryURL = [NSURL fileURLWithPath:libraryPath];
-      context_->library = [context_->device newLibraryWithURL:libraryURL
-                                                        error:&error];
+    if (!shaderSource) {
+      throw MetalComputeError("Failed to load physics.metal shader file");
     }
 
-    // Fallback: compile from source at runtime
-    if (!context_->library) {
-      NSString *shaderPath = @"assets/shaders/physics.metal";
-      NSString *shaderSource =
-          [NSString stringWithContentsOfFile:shaderPath
-                                    encoding:NSUTF8StringEncoding
-                                       error:&error];
-      if (shaderSource) {
-        MTLCompileOptions *options = [[MTLCompileOptions alloc] init];
-        options.fastMathEnabled = YES;
-        context_->library = [context_->device newLibraryWithSource:shaderSource
-                                                           options:options
-                                                             error:&error];
-      }
-    }
+    MTLCompileOptions *options = [[MTLCompileOptions alloc] init];
+    options.mathMode = MTLMathModeFast;
+    context_->library = [context_->device newLibraryWithSource:shaderSource
+                                                       options:options
+                                                         error:&error];
 
     if (!context_->library) {
-      std::cerr << "[MetalCompute] Failed to load shader library" << std::endl;
+      std::string errMsg = "Failed to compile Metal shaders";
       if (error) {
-        std::cerr << "  Error: " << [[error localizedDescription] UTF8String]
-                  << std::endl;
+        errMsg += ": " + std::string([[error localizedDescription] UTF8String]);
       }
-      // Continue without GPU acceleration for now
-      initialized_ = false;
-      return true; // Still "initialize" but CPU fallback
+      throw MetalComputeError(errMsg);
     }
 
-    // Create compute pipelines
+    // Create integrate_bodies pipeline
     id<MTLFunction> integrateFunc =
         [context_->library newFunctionWithName:@"integrate_bodies"];
-    if (integrateFunc) {
-      context_->integratePipeline =
-          [context_->device newComputePipelineStateWithFunction:integrateFunc
-                                                          error:&error];
+    if (!integrateFunc) {
+      throw MetalComputeError("Metal shader 'integrate_bodies' not found");
+    }
+    context_->integratePipeline =
+        [context_->device newComputePipelineStateWithFunction:integrateFunc
+                                                        error:&error];
+    if (!context_->integratePipeline) {
+      throw MetalComputeError("Failed to create integrate_bodies pipeline");
     }
 
+    // Create apply_forces pipeline
     id<MTLFunction> forcesFunc =
         [context_->library newFunctionWithName:@"apply_forces"];
-    if (forcesFunc) {
-      context_->applyForcesPipeline =
-          [context_->device newComputePipelineStateWithFunction:forcesFunc
-                                                          error:&error];
+    if (!forcesFunc) {
+      throw MetalComputeError("Metal shader 'apply_forces' not found");
+    }
+    context_->applyForcesPipeline =
+        [context_->device newComputePipelineStateWithFunction:forcesFunc
+                                                        error:&error];
+    if (!context_->applyForcesPipeline) {
+      throw MetalComputeError("Failed to create apply_forces pipeline");
     }
 
     // Create parameter buffer
     context_->paramsBuffer =
         [context_->device newBufferWithLength:sizeof(SimulationParams)
                                       options:MTLResourceStorageModeShared];
+    if (!context_->paramsBuffer) {
+      throw MetalComputeError("Failed to create simulation params buffer");
+    }
 
-    initialized_ = (context_->integratePipeline != nil);
-    std::cout << "[MetalCompute] Initialized: "
-              << (initialized_ ? "GPU" : "CPU fallback") << std::endl;
-
-    return true;
+    std::cout << "[MetalCompute] Initialized successfully with GPU acceleration"
+              << std::endl;
   }
 }
 
@@ -126,24 +131,22 @@ void MetalCompute::shutdown() {
     context_->library = nil;
     context_->commandQueue = nil;
     context_->device = nil;
-    initialized_ = false;
   }
-}
-
-bool MetalCompute::isAvailable() const {
-  return initialized_ && context_->device != nil;
 }
 
 void MetalCompute::setRigidBodies(const std::vector<RigidBody> &bodies) {
   bodies_ = bodies;
 
   @autoreleasepool {
-    if (context_->device && !bodies.empty()) {
+    if (!bodies.empty()) {
       size_t bufferSize = bodies.size() * sizeof(RigidBody);
       context_->bodiesBuffer =
           [context_->device newBufferWithBytes:bodies.data()
                                         length:bufferSize
                                        options:MTLResourceStorageModeShared];
+      if (!context_->bodiesBuffer) {
+        throw MetalComputeError("Failed to create rigid bodies buffer");
+      }
     }
   }
 }
@@ -167,26 +170,6 @@ void MetalCompute::stepSimulation(float deltaTime) {
   if (bodies_.empty())
     return;
 
-  if (!initialized_ || !context_->integratePipeline) {
-    // CPU fallback: simple Euler integration
-    for (auto &body : bodies_) {
-      if (body.invMass > 0.0f) {
-        // Apply gravity
-        body.force.y -= gravity_ * body.mass;
-
-        // Integration
-        simd_float3 accel = body.force * body.invMass;
-        body.velocity += accel * deltaTime;
-        body.position += body.velocity * deltaTime;
-
-        // Clear forces
-        body.force = simd_make_float3(0, 0, 0);
-        body.torque = simd_make_float3(0, 0, 0);
-      }
-    }
-    return;
-  }
-
   @autoreleasepool {
     // Update parameters
     SimulationParams params = {.deltaTime = deltaTime,
@@ -202,30 +185,27 @@ void MetalCompute::stepSimulation(float deltaTime) {
         [commandBuffer computeCommandEncoder];
 
     // Apply forces kernel
-    if (context_->applyForcesPipeline) {
-      [encoder setComputePipelineState:context_->applyForcesPipeline];
-      [encoder setBuffer:context_->bodiesBuffer offset:0 atIndex:0];
-      [encoder setBuffer:context_->paramsBuffer offset:0 atIndex:1];
+    [encoder setComputePipelineState:context_->applyForcesPipeline];
+    [encoder setBuffer:context_->bodiesBuffer offset:0 atIndex:0];
+    [encoder setBuffer:context_->paramsBuffer offset:0 atIndex:1];
 
-      MTLSize gridSize = MTLSizeMake(bodies_.size(), 1, 1);
-      NSUInteger threadGroupSize =
-          MIN(context_->applyForcesPipeline.maxTotalThreadsPerThreadgroup,
-              bodies_.size());
-      MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+    MTLSize gridSize = MTLSizeMake(bodies_.size(), 1, 1);
+    NSUInteger threadGroupSize =
+        MIN(context_->applyForcesPipeline.maxTotalThreadsPerThreadgroup,
+            bodies_.size());
+    MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
 
-      [encoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
-    }
+    [encoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
 
     // Integration kernel
     [encoder setComputePipelineState:context_->integratePipeline];
     [encoder setBuffer:context_->bodiesBuffer offset:0 atIndex:0];
     [encoder setBuffer:context_->paramsBuffer offset:0 atIndex:1];
 
-    MTLSize gridSize = MTLSizeMake(bodies_.size(), 1, 1);
-    NSUInteger threadGroupSize =
+    threadGroupSize =
         MIN(context_->integratePipeline.maxTotalThreadsPerThreadgroup,
             bodies_.size());
-    MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+    threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
 
     [encoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
     [encoder endEncoding];
@@ -234,7 +214,7 @@ void MetalCompute::stepSimulation(float deltaTime) {
     [commandBuffer commit];
     [commandBuffer waitUntilCompleted];
 
-    // Sync back to CPU (for reading positions, etc.)
+    // Sync back to CPU (unified memory - zero copy on Apple Silicon)
     RigidBody *ptr = (RigidBody *)[context_->bodiesBuffer contents];
     bodies_.assign(ptr, ptr + bodies_.size());
   }
@@ -253,5 +233,12 @@ void MetalCompute::applyTorque(uint32_t bodyIndex, simd_float3 torque) {
 }
 
 void MetalCompute::setGravity(float g) { gravity_ = g; }
+
+std::string MetalCompute::getDeviceName() const {
+  if (context_->deviceName) {
+    return std::string([context_->deviceName UTF8String]);
+  }
+  return "Unknown";
+}
 
 } // namespace Physics

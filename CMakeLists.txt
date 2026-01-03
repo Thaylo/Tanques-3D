@@ -113,8 +113,9 @@ set_target_properties(Tanques3D PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-# Copy assets to build directory
+# Copy assets to build directory for game and tests
 file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR}/bin)
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR})
 
 # Testing with GoogleTest
 include(FetchContent)
@@ -136,6 +137,7 @@ add_executable(Tanques3DTests
     tests/unit/test_timer.cpp
     tests/unit/test_projectile_physics.cpp
     tests/integration/test_gamedata.cpp
+    tests/integration/test_metal_physics.mm
 )
 target_link_libraries(Tanques3DTests PRIVATE
     Tanques3DLib
