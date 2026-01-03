@@ -32,11 +32,25 @@ void TrainingAgent::reset(float startX, float startY, float startAngle) {
 }
 
 float TrainingAgent::getFitness() const {
-  // Weighted fitness function
-  return survivalTime * 1.0f +    // Survival bonus
-         damageDealt * 2.0f +     // Damage bonus
-         kills * 50.0f +          // Kill bonus
-         (alive ? 100.0f : 0.0f); // Alive bonus
+  // Aggressive fitness function: KILL OR BE KILLED
+  float fitness = 0.0f;
+
+  fitness += kills * 500.0f;      // HUGE kill bonus
+  fitness += damageDealt * 5.0f;  // Damage dealt bonus
+  fitness += survivalTime * 0.5f; // Minor survival bonus
+
+  if (alive) {
+    fitness += 200.0f; // Alive bonus
+  } else {
+    fitness -= 200.0f; // Death penalty
+  }
+
+  // Bonus for efficient kills (kills per survival time)
+  if (survivalTime > 0) {
+    fitness += (kills / survivalTime) * 100.0f;
+  }
+
+  return std::max(0.0f, fitness);
 }
 
 TrainingArena::TrainingArena(int populationSize)
