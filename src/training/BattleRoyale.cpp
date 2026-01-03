@@ -13,6 +13,8 @@ namespace Training {
 constexpr float MAX_SPEED = 25.0f;
 constexpr float ACCELERATION = 50.0f;
 constexpr float TURN_RATE = 2.5f;
+constexpr float FRICTION =
+    5.0f; // Ground friction - tanks stop when not accelerating
 constexpr float PROJECTILE_SPEED = 150.0f;
 constexpr float PROJECTILE_RANGE = 100.0f;
 constexpr float PROJECTILE_DAMAGE = 25.0f;
@@ -38,23 +40,13 @@ void BRAgent::reset(float startX, float startY, float startAngle) {
 
 float BRAgent::getFitness() const {
   // =============================================================
-  // PURE SURVIVAL FITNESS
-  // Only survival matters. Kills are just a means to an end.
+  // PURE SURVIVAL FITNESS - Time alive is the ONLY metric
   // =============================================================
 
-  // 1. SURVIVAL TIME - How long did you stay alive?
-  //    120 seconds max = 1200 points
-  float fitness = timeAlive * 10.0f;
-
-  // 2. FINAL PLACEMENT - The ultimate measure of survival
-  //    Winner (placement 1) gets 9800 bonus points
-  //    Last place (placement 50) gets 0 bonus
-  fitness += (50 - placement) * 200.0f;
-
-  // That's it. No kills, no damage, no accuracy.
-  // Survive by any means necessary.
-
-  return std::max(0.0f, fitness);
+  // Survival time in seconds - that's it!
+  // Longer survival = higher fitness
+  // No placement bonus, no kills, no damage
+  return timeAlive;
 }
 
 std::array<float, AI::BR_INPUT_SIZE>
@@ -95,27 +87,36 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
                       return a.distSq < b.distSq;
                     });
 
-  // Populate enemy inputs (3 closest)
+  // Populate enemy inputs (3 closest) - ALL IN AGENT'S LOCAL FRAME
+  float cosAngle = std::cos(-angle); // Rotation matrix to local frame
+  float sinAngle = std::sin(-angle);
+
   for (int e = 0; e < topK; ++e) {
     const auto &enemy = allAgents[enemyDists[e].idx];
+
+    // Position delta in world coords
     float dx = enemy.x - x;
     float dy = enemy.y - y;
-    float dist = std::sqrt(enemyDists[e].distSq); // Only sqrt for top 3
+    float dist = std::sqrt(enemyDists[e].distSq);
 
-    // Angle to enemy (self-centered, CCW from facing direction)
-    float angleToEnemy = std::atan2(dy, dx) - angle;
-    while (angleToEnemy > M_PI)
-      angleToEnemy -= 2 * M_PI;
-    while (angleToEnemy < -M_PI)
-      angleToEnemy += 2 * M_PI;
+    // Transform position to local frame (forward = +X, left = +Y)
+    float localX = dx * cosAngle - dy * sinAngle; // Forward/back
+    float localY = dx * sinAngle + dy * cosAngle; // Left/right
+
+    // Transform enemy velocity to local frame
+    float localVx =
+        enemy.vx * cosAngle - enemy.vy * sinAngle; // Forward component
+    float localVy =
+        enemy.vx * sinAngle + enemy.vy * cosAngle; // Sideways component
 
     int base = e * 6;
-    input[base + 0] = std::min(dist / 200.0f, 1.0f);           // Distance
-    input[base + 1] = angleToEnemy / static_cast<float>(M_PI); // Angle
-    input[base + 2] = enemy.vx / MAX_SPEED;                    // Enemy vel X
-    input[base + 3] = enemy.vy / MAX_SPEED;                    // Enemy vel Y
-    input[base + 4] = enemy.health / 100.0f;                   // Enemy health
-    input[base + 5] = enemy.reloadTimer / RELOAD_TIME;         // Enemy reload
+    // Position: localX > 0 means enemy is ahead, localY > 0 means to the left
+    input[base + 0] = std::clamp(localX / 200.0f, -1.0f, 1.0f); // Forward dist
+    input[base + 1] = std::clamp(localY / 200.0f, -1.0f, 1.0f); // Side dist
+    input[base + 2] = localVx / MAX_SPEED;             // Enemy forward vel
+    input[base + 3] = localVy / MAX_SPEED;             // Enemy side vel
+    input[base + 4] = enemy.health / 100.0f;           // Enemy health
+    input[base + 5] = enemy.reloadTimer / RELOAD_TIME; // Enemy reload
   }
 
   // Self state
@@ -336,14 +337,24 @@ bool BattleRoyaleArena::step(float dt) {
     // Apply turning
     agent.angle += turnDir * TURN_RATE * dt;
 
-    // Apply acceleration
+    // Apply acceleration (when throttle > 0)
     float ax = std::cos(agent.angle) * throttle * ACCELERATION;
     float ay = std::sin(agent.angle) * throttle * ACCELERATION;
     agent.vx += ax * dt;
     agent.vy += ay * dt;
 
-    // Clamp speed
+    // Apply ground friction (tanks stop when not accelerating)
     float speed = std::sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
+    if (speed > 0.01f) {
+      float frictionDecel = FRICTION * dt;
+      float newSpeed = std::max(0.0f, speed - frictionDecel);
+      float factor = newSpeed / speed;
+      agent.vx *= factor;
+      agent.vy *= factor;
+      speed = newSpeed;
+    }
+
+    // Clamp max speed
     if (speed > MAX_SPEED) {
       agent.vx = agent.vx / speed * MAX_SPEED;
       agent.vy = agent.vy / speed * MAX_SPEED;
