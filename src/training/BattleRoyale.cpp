@@ -469,16 +469,20 @@ void BattleRoyaleArena::checkProjectileHits() {
     if (!p.active)
       continue;
 
-    for (size_t i = 0; i < agents_.size(); ++i) {
-      auto &target = agents_[i];
-      if (!target.alive || static_cast<int>(i) == p.shooterId)
+    // Use octree radius query instead of O(N) loop
+    auto nearby = octree_->queryRadius(p.x, p.y, 0, HIT_RADIUS);
+
+    for (const auto &result : nearby) {
+      size_t idx = result.first;
+      auto &target = agents_[idx];
+      if (!target.alive || static_cast<int>(idx) == p.shooterId)
         continue;
 
       float dx = target.x - p.x;
       float dy = target.y - p.y;
-      float dist = std::sqrt(dx * dx + dy * dy);
+      float distSq = dx * dx + dy * dy;
 
-      if (dist < HIT_RADIUS) {
+      if (distSq < HIT_RADIUS * HIT_RADIUS) {
         target.health -= PROJECTILE_DAMAGE;
         agents_[p.shooterId].damageDealt += PROJECTILE_DAMAGE;
         agents_[p.shooterId].shotsHit++;
