@@ -363,11 +363,9 @@ bool BattleRoyaleArena::step(float dt) {
     agent.y += agent.vy * dt;
     agent.reloadTimer = std::max(0.0f, agent.reloadTimer - dt);
 
-    // Shooting requires stamina (20 per shot)
-    if (shouldShoot > 0.5f && agent.reloadTimer <= 0 &&
-        agent.stamina >= 20.0f) {
+    // Shooting (no stamina cost - only turning uses stamina)
+    if (shouldShoot > 0.5f && agent.reloadTimer <= 0) {
       agent.wantsToShoot = true;
-      agent.stamina -= 20.0f; // Shooting costs stamina
     }
   });
 
