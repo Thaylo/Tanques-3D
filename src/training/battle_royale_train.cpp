@@ -18,21 +18,21 @@
 using namespace Training;
 using namespace AI;
 
-// Evolution parameters (25 agents for fast iteration)
-constexpr int POPULATION_SIZE = 25;
-constexpr int ELITE_COUNT = 3;        // Top 3 survive
-constexpr int CHAMPION_OFFSPRING = 5; // Winner gets 5 offspring (20%)
-constexpr int RANDOM_INJECT = 2;      // Fresh random networks
-constexpr float MUTATION_RATE = 0.15f;
-constexpr float MUTATION_STRENGTH = 0.4f;
+// Evolution parameters (100 agents with high mutation)
+constexpr int POPULATION_SIZE = 100;
+constexpr int ELITE_COUNT = 10;           // Top 10% survive
+constexpr int CHAMPION_OFFSPRING = 10;    // Winner gets 10 offspring
+constexpr int RANDOM_INJECT = 5;          // Fresh random networks
+constexpr float MUTATION_RATE = 0.25f;    // 25% of weights mutate
+constexpr float MUTATION_STRENGTH = 0.6f; // Larger mutations
 
 // Speed scaling
 constexpr float MAX_SIM_SPEED = 100.0f;
 constexpr float MIN_SIM_SPEED = 1.0f;
 
 // Visualization
-constexpr int WINDOW_SIZE = 700;
-constexpr float WORLD_SIZE = 300.0f;
+constexpr int WINDOW_SIZE = 800;
+constexpr float WORLD_SIZE = 500.0f;
 
 // Save file
 const char *SAVE_FILE = "battle_royale_best.bin";

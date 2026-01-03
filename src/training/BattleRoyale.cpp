@@ -195,15 +195,15 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
-  // Initialize octree for 300x300 arena (with Z for future 3D)
+  // Initialize octree for 500x500 arena (with Z for future 3D)
   octree_ = std::make_unique<Spatial::Octree<size_t>>(
-      Spatial::AABB(-150, -150, -100, 150, 150, 100));
+      Spatial::AABB(-250, -250, -100, 250, 250, 100));
 }
 
 void BattleRoyaleArena::reset() {
   zone_ = SafeZone();
-  zone_.radius = 150.0f; // Smaller zone for 25 agents
-  zone_.targetRadius = 150.0f;
+  zone_.radius = 250.0f; // 500x500 arena
+  zone_.targetRadius = 250.0f;
   projectiles_.clear();
   elapsedTime_ = 0;
   roundOver_ = false;
@@ -299,7 +299,7 @@ bool BattleRoyaleArena::step(float dt) {
   float zoneY = zone_.centerY;
   float zoneRadius = zone_.radius;
   float zoneShrinkTimer = zone_.shrinkTimer;
-  float maxZoneRadius = 150.0f;
+  float maxZoneRadius = 250.0f;
   float elapsed = elapsedTime_;
 
   // PHASE 2: GCD parallel agent processing
