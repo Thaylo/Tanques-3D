@@ -26,7 +26,7 @@ TEST(ProjectilePhysics, ConstantsAreSI) {
   // Verify expected values
   EXPECT_EQ(TIME_STEP, 20);
   EXPECT_DOUBLE_EQ(PROJECTILE_SPEED, 200.0);
-  EXPECT_DOUBLE_EQ(MOVABLE_MAX_VELOCITY, 15.0);
+  EXPECT_DOUBLE_EQ(MOVABLE_MAX_VELOCITY, 25.0); // 25 m/s = 90 km/h (arcade)
 }
 
 // Test deltaTime calculation
