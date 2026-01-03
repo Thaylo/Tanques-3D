@@ -204,6 +204,9 @@ float SafeZone::angleToCenter(float fromX, float fromY) const {
 
 BattleRoyaleArena::BattleRoyaleArena() : rng_(std::random_device{}()) {
   agents_.resize(AGENT_COUNT);
+  // Initialize octree for 400x400 arena (with Z for future 3D)
+  octree_ = std::make_unique<Spatial::Octree<size_t>>(
+      Spatial::AABB(-200, -200, -100, 200, 200, 100));
 }
 
 void BattleRoyaleArena::reset() {
@@ -269,6 +272,17 @@ bool BattleRoyaleArena::step(float dt) {
 
   // Apply zone damage
   applyZoneDamage(dt);
+
+  // =====================================================
+  // OCTREE REBUILD - O(N) insert for O(log N) queries
+  // Future-proofed for 3D terrain
+  // =====================================================
+  octree_->clear();
+  for (size_t i = 0; i < agents_.size(); ++i) {
+    if (agents_[i].alive) {
+      octree_->insert(i, agents_[i].x, agents_[i].y, 0);
+    }
+  }
 
   // =====================================================
   // AGENT PROCESSING

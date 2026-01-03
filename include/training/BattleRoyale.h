@@ -6,8 +6,10 @@
 #define BATTLE_ROYALE_H
 
 #include "ai/BattleRoyaleNN.h"
+#include "core/Octree.h"
 #include <array>
 #include <cmath>
+#include <memory>
 #include <random>
 #include <vector>
 
@@ -113,6 +115,7 @@ private:
   SafeZone zone_;
   std::vector<Projectile> projectiles_;
   std::mt19937 rng_;
+  std::unique_ptr<Spatial::Octree<size_t>> octree_; // Spatial partitioning
 
   float elapsedTime_ = 0;
   bool roundOver_ = false;
