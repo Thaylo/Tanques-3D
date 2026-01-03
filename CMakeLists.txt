@@ -90,10 +90,19 @@ if(APPLE)
         src/physics/MetalCompute.mm
         src/physics/PhysicsWorld.mm
         src/ai/AIController.mm
+        src/ai/NeuralNetwork.cpp
     )
 else()
-    set(PHYSICS_SOURCES)
+    set(PHYSICS_SOURCES
+        src/ai/NeuralNetwork.cpp
+    )
 endif()
+
+# Training sources (platform independent)
+set(TRAINING_SOURCES
+    src/training/TrainingArena.cpp
+    src/training/EvolutionManager.cpp
+)
 
 # Library for testing (excludes main and OpenGL)
 add_library(Tanques3DLib STATIC
@@ -102,8 +111,16 @@ add_library(Tanques3DLib STATIC
     ${GAME_SOURCES}
     ${RENDERING_SOURCES}
     ${PHYSICS_SOURCES}
+    ${TRAINING_SOURCES}
 )
 target_link_libraries(Tanques3DLib PUBLIC ${PLATFORM_LIBS})
+
+# Training executable (headless)
+add_executable(TrainAI src/training/train_ai.cpp)
+target_link_libraries(TrainAI PRIVATE Tanques3DLib)
+set_target_properties(TrainAI PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
 
 # Main executable
 add_executable(Tanques3D src/game/Main.cpp)
