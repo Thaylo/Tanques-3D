@@ -317,9 +317,13 @@ bool BattleRoyaleArena::step(float dt) {
                                  zoneShrinkTimer, maxZoneRadius);
 
     auto output = agent.brain->forward(input);
-    float turnDir = output[0];
-    float throttle = output[1];
-    float shouldShoot = output[2];
+
+    // Transform sigmoid [0,1] outputs to proper ranges:
+    // turnDir: [0,1] → [-1,1] for bidirectional turning
+    // throttle: [0,1] → [-0.5,1] for mostly forward with slight reverse
+    float turnDir = output[0] * 2.0f - 1.0f;  // [-1, 1]
+    float throttle = output[1] * 1.5f - 0.5f; // [-0.5, 1]
+    float shouldShoot = output[2];            // [0, 1] threshold
 
     agent.angle += turnDir * TURN_RATE * dt;
     agent.cosAngle = std::cos(agent.angle);
