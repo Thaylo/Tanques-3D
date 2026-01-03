@@ -233,11 +233,24 @@ private:
       newPop.push_back(fresh);
     }
 
-    // Crossover + mutation
-    std::uniform_int_distribution<int> parentDist(0, POPULATION_SIZE / 3);
+    // TOURNAMENT SELECTION + Crossover + Mutation
+    // Any network can be a parent, but fitter ones are more likely to win
+    std::uniform_int_distribution<int> popDist(0, POPULATION_SIZE - 1);
+
     while (newPop.size() < POPULATION_SIZE) {
-      int p1 = parentDist(rng_);
-      int p2 = parentDist(rng_);
+      // Tournament selection: pick 2 random, choose the fitter one
+      auto tournament = [&]() -> int {
+        int a = popDist(rng_);
+        int b = popDist(rng_);
+        return (population_[a].fitness > population_[b].fitness) ? a : b;
+      };
+
+      int p1 = tournament();
+      int p2 = tournament();
+
+      // Ensure different parents
+      while (p2 == p1)
+        p2 = tournament();
 
       BattleRoyaleNN child =
           BattleRoyaleNN::crossover(population_[p1], population_[p2], rng_);
