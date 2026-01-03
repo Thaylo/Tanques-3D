@@ -110,17 +110,39 @@ BRAgent::getInputs(const std::vector<BRAgent> &allAgents, float zoneX,
   input[AI::BRInput::SELF_HEALTH] = health / 100.0f;
   input[AI::BRInput::SELF_RELOAD] = reloadTimer / RELOAD_TIME;
 
-  // Safe zone inputs
+  // =============================================================
+  // SAFE ZONE AWARENESS
+  // Designed for intuitive learning:
+  //   ZONE_DIST: +1.0 = at center (very safe)
+  //               0.0 = at edge (danger imminent)
+  //              -1.0 = far outside (taking damage!)
+  //   ZONE_DIR:  Direction to flee toward safety (self-centered)
+  // =============================================================
+
   float dzX = zoneX - x;
   float dzY = zoneY - y;
   float distToCenter = std::sqrt(dzX * dzX + dzY * dzY);
   float distToEdge = zoneRadius - distToCenter;
 
-  input[AI::BRInput::ZONE_DIST] = std::clamp(distToEdge / 100.0f, -1.0f, 1.0f);
-  input[AI::BRInput::ZONE_DIR] =
-      std::atan2(dzY, dzX) / static_cast<float>(M_PI);
+  // Normalized safety margin: scale-invariant as zone shrinks
+  // +1 = at zone center, 0 = at edge, negative = outside
+  float safetyMargin = (zoneRadius > 0) ? (distToEdge / zoneRadius) : 0.0f;
+  input[AI::BRInput::ZONE_DIST] = std::clamp(safetyMargin, -1.0f, 1.0f);
+
+  // Direction to zone center (self-centered, CCW from facing)
+  float angleToZone = std::atan2(dzY, dzX) - angle;
+  while (angleToZone > M_PI)
+    angleToZone -= 2 * M_PI;
+  while (angleToZone < -M_PI)
+    angleToZone += 2 * M_PI;
+  input[AI::BRInput::ZONE_DIR] = angleToZone / static_cast<float>(M_PI);
+
+  // Zone shrink progress: 1 = full size, 0 = minimum size
   input[AI::BRInput::ZONE_RADIUS] = zoneRadius / maxZoneRadius;
-  input[AI::BRInput::ZONE_TIMER] = zoneShrinkTimer / 5.0f;
+
+  // Time pressure: 0 = just shrunk, 1 = about to shrink
+  input[AI::BRInput::ZONE_TIMER] =
+      std::clamp(1.0f - (zoneShrinkTimer / 5.0f), 0.0f, 1.0f);
 
   return input;
 }
